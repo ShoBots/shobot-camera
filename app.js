@@ -97,30 +97,33 @@ function closeAndReturn() {
 
   const isbnList = Array.from(scannedSet);
 
-  // スキャンが0件の場合はそのまま完了表示
   if (isbnList.length === 0) {
     showFinishScreen();
     return;
   }
 
-  // 二重押し防止
   const btn = document.querySelector(".btn-close");
   if (btn) btn.disabled = true;
 
-  // まとめて1回だけGAS（doPost）へ送信
+  // ★送信データをログに出力して確認
+  console.log("送信データ:", JSON.stringify({ isbns: isbnList }));
+
   fetch(GAS_WEB_APP_URL, {
     method: "POST",
+    mode: "cors", // CORS通信を明示
     headers: {
-      "Content-Type": "text/plain;charset=utf-8",
+      "Content-Type": "text/plain;charset=utf-8", // GASの仕様上 text/plain が一番安定します
     },
     body: JSON.stringify({ isbns: isbnList })
   })
   .then(res => res.json())
   .then(data => {
+    console.log("GASからのレスポンス:", data);
     showFinishScreen();
   })
   .catch(err => {
-    showModal("送信に失敗しました。もう一度お試しください。");
+    console.error("送信エラー詳細:", err);
+    showModal("送信に失敗しました: " + err.message);
     if (btn) btn.disabled = false;
   });
 }
