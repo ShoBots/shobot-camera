@@ -96,6 +96,7 @@ async function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
 
   const isbnList = Array.from(scannedSet);
+  alert("1. ボタンが押されました。件数: " + isbnList.length);
 
   if (isbnList.length === 0) {
     showFinishScreen();
@@ -106,7 +107,8 @@ async function closeAndReturn() {
   if (btn) btn.disabled = true;
 
   try {
-    // 確実に送信完了まで待機（await）
+    alert("2. 今からGASへ送信します");
+    
     const response = await fetch(GAS_WEB_APP_URL, {
       method: "POST",
       headers: {
@@ -115,20 +117,10 @@ async function closeAndReturn() {
       body: JSON.stringify({ isbns: isbnList })
     });
 
-    console.log("送信成功");
+    alert("3. 送信完了！レスポンス受信");
     showFinishScreen();
   } catch (err) {
-    console.error("送信エラー:", err);
-    // エラーが起きても no-cors フォールバックで強制送信を試みる
-    try {
-      await fetch(GAS_WEB_APP_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ isbns: isbnList })
-      });
-    } catch (e) {}
-    
+    alert("エラーが発生しました: " + err.message);
     showFinishScreen();
   }
 }
