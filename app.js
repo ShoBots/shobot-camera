@@ -92,11 +92,10 @@ function closeModal() {
 }
 
 // 終了して戻る処理
-async function closeAndReturn() {
+function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
 
   const isbnList = Array.from(scannedSet);
-  alert("1. ボタンが押されました。件数: " + isbnList.length);
 
   if (isbnList.length === 0) {
     showFinishScreen();
@@ -106,23 +105,39 @@ async function closeAndReturn() {
   const btn = document.querySelector(".btn-close");
   if (btn) btn.disabled = true;
 
-  try {
-    alert("2. 今からGASへ送信します");
-    
-    const response = await fetch(GAS_WEB_APP_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify({ isbns: isbnList })
-    });
-
-    alert("3. 送信完了！レスポンス受信");
-    showFinishScreen();
-  } catch (err) {
-    alert("エラーが発生しました: " + err.message);
-    showFinishScreen();
+  // CSP制限（connect-src）を回避するため、fetch ではなく隠し iframe + form で送信[cite: 7]
+  const iframeName = "hidden_upload_frame";
+  let iframe = document.getElementById(iframeName);
+  
+  if (!iframe) {
+    iframe = document.createElement("iframe");
+    iframe.name = iframeName;
+    iframe.id = iframeName;
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
   }
+
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = GAS_WEB_APP_URL;
+  form.target = iframeName;
+
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "postData";
+  input.value = JSON.stringify({ isbns: isbnList });
+  form.appendChild(input);
+
+  document.body.appendChild(form);
+  
+  // 送信実行
+  form.submit();
+
+  // 送信後にformを削除して完了画面を表示
+  setTimeout(() => {
+    document.body.removeChild(form);
+    showFinishScreen();
+  }, 800);
 }
 
 // スキャン完了後の案内表示
