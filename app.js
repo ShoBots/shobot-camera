@@ -100,12 +100,21 @@ function closeModal() {
 }
 
 // 終了して戻る処理
+// app.js
+
 function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
-  window.close();
-  setTimeout(() => {
-    if (!window.closed) {
-      history.back();
-    }
-  }, 200);
+
+  // 1. PCブラウザ等の場合：通常通りウィンドウを閉じるを試みる
+  if (window.opener && !window.opener.closed) {
+    window.close();
+    return;
+  }
+
+  // 2. LINE内ブラウザ等の場合：スキャンしたISBNを連れてGAS（親画面）のURLへ直接リダイレクトして戻る
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec";
+  const scannedList = Array.from(scannedSet).join(",");
+  
+  // GAS側にスキャン結果を渡して画面を再開
+  window.location.href = GAS_URL + "?scannedIsbns=" + encodeURIComponent(scannedList);
 }
