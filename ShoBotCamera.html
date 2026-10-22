@@ -3,25 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body, html { width: 100%; height: 100%; display: flex; flex-direction: column; background: #f4f4f4; }
-    
-    /* 上半分：カメラエリア */
-    #interactive.viewport { width: 100%; height: 45vh; background: #000; position: relative; }
-    #interactive.viewport video, #interactive.viewport canvas { width: 100%; height: 100%; object-fit: cover; }
-    
-    /* 下半分：スキャン済みリストエリア */
-    .list-container { flex: 1; padding: 12px; overflow-y: auto; }
-    .list-title { font-size: 14px; font-weight: bold; color: #555; margin-bottom: 8px; }
-    .scan-list { list-style: none; }
-    .scan-item { background: #fff; padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    
-    /* 下部固定：完了ボタン */
-    .footer { padding: 10px 12px; background: #fff; border-top: 1px solid #ddd; }
-    .btn-close { width: 100%; padding: 12px; background: #aabb88; color: #fff; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; }
-  </style>
 </head>
 <body>
 
@@ -40,9 +23,26 @@
   </div>
 
   <script>
+    const MAX_BOOKS = 20; // 最大上限数
     let lastScannedTime = 0;
     const scannedSet = new Set();
-
+  
+    // 画面読み込み時にURLパラメータから既存のISBNを引き継ぐ
+    window.addEventListener("DOMContentLoaded", function() {
+      const params = new URLSearchParams(window.location.search);
+      const existingIsbnsParam = params.get("isbns");
+  
+      if (existingIsbnsParam) {
+        const existingIsbns = existingIsbnsParam.split(",");
+        existingIsbns.forEach(isbn => {
+          if (isbn && !scannedSet.has(isbn)) {
+            scannedSet.add(isbn);
+            renderItem(isbn, true); // 引き継ぎ分として画面描画
+          }
+        });
+      }
+    });
+  
     // カメラ起動処理
     Quagga.init({
       inputStream: {
@@ -55,41 +55,61 @@
     }, function(err) {
       if (!err) Quagga.start();
     });
-
+  
     // バーコード検知時処理
     Quagga.onDetected(function(result) {
       const now = Date.now();
       if (now - lastScannedTime < 1500) return; // 連続読み取り防止
-
+  
       const code = result.codeResult.code;
       if (code && code.length === 13 && (code.startsWith("978") || code.startsWith("979"))) {
         lastScannedTime = now;
-
+  
         // 重複チェック
-        if (scannedSet.has(code)) return;
+        if (scannedSet.has(code)) {
+          alert("既に同じISBNコードが入力されています");
+          return;
+        }
+  
+        // ★上限チェック（20冊を超えそうになった場合）
+        if (scannedSet.size >= MAX_BOOKS) {
+          alert("読み込み件数が上限(" + MAX_BOOKS + "冊)に達しています。\n一度登録をしてください");
+          return;
+        }
+  
         scannedSet.add(code);
-
-        // 1. このカメラ画面のリストに追加表示
-        renderItem(code);
-
+  
+        // 1. スキャナー画面のリストに追加表示
+        renderItem(code, false);
+  
         // 2. 裏のGAS（親画面）へISBNをリアルタイム送信
-        if (window.opener) {
-          window.opener.postMessage({ type: "SCAN_ISBN", isbn: code }, "*");
+        const targetWindow = window.opener || window.parent;
+        if (targetWindow && targetWindow !== window) {
+          targetWindow.postMessage({ type: "SCAN_ISBN", isbn: code }, "*");
         }
       }
     });
-
+  
     // リストにアイテムを追加描画する関数
-    function renderItem(isbn) {
+    function renderItem(isbn, isInitial) {
       const listEl = document.getElementById("scanList");
       const countEl = document.getElementById("count");
       
       const li = document.createElement("li");
       li.className = "scan-item";
-      li.innerHTML = `<span>📖 ${isbn}</span><span style="color:#aabb88; font-weight:bold;">追加済み</span>`;
       
-      listEl.insertBefore(li, listEl.firstChild); // 新しいものを一番上に追加
+      // 引き継ぎ分と新規スキャン分でラベル表示を変える
+      const tagText = isInitial ? "追加済み(既存)" : "追加済み";
+      li.innerHTML = `<span>${isbn}</span><span style="color:#aabb88; font-weight:bold;">${tagText}</span>`;
+      
+      listEl.appendChild(li); // 古い順（下に追加）
       countEl.textContent = scannedSet.size;
+    }
+  
+    // 「スキャンを終了して戻る」ボタン処理
+    function closeAndReturn() {
+      try { Quagga.stop(); } catch(e) {}
+      window.close();
     }
   </script>
 </body>
