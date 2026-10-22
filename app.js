@@ -13,13 +13,13 @@ window.addEventListener("DOMContentLoaded", function() {
     existingIsbns.forEach(isbn => {
       if (isbn && !scannedSet.has(isbn)) {
         scannedSet.add(isbn);
-        renderItem(isbn, true); // 引き継ぎ分として描画
+        renderItem(isbn, true);
       }
     });
   }
 });
 
-// Quagga（カメラ）起動処理
+// Quagga起動処理
 Quagga.init({
   inputStream: {
     name: "Live",
@@ -34,11 +34,10 @@ Quagga.init({
 
 // バーコード検知時処理
 Quagga.onDetected(function(result) {
-  // モーダル表示中は読み取りをガード
   if (isModalOpen) return;
 
   const now = Date.now();
-  if (now - lastScannedTime < 1500) return; // 1.5秒インターバル
+  if (now - lastScannedTime < 1500) return;
 
   const code = result.codeResult.code;
   if (code && code.length === 13 && (code.startsWith("978") || code.startsWith("979"))) {
@@ -57,24 +56,17 @@ Quagga.onDetected(function(result) {
     }
 
     scannedSet.add(code);
-
-    // 1. この画面のリストに下へ追加（元の画面と同じ順）
     renderItem(code, false);
-
-    // 2. データ送信（postMessage + localStorageバックアップ）
     sendToParent(code);
   }
 });
 
-// データ送信処理
+// データ送信（postMessage + localStorageバックアップ）
 function sendToParent(code) {
-  // ① postMessage（PCや一部ブラウザ用）
   const target = window.opener || window.parent;
   if (target && target !== window) {
     target.postMessage({ type: "SCAN_ISBN", isbn: code }, "*");
   }
-  
-  // ② localStorage（スマホLINE内ブラウザ用のバックアップ）
   localStorage.setItem("LAST_SCANNED_ISBN", code + "_" + Date.now());
 }
 
@@ -88,11 +80,11 @@ function renderItem(isbn, isInitial) {
   const tagText = isInitial ? "追加済み(既存)" : "追加済み";
   li.innerHTML = `<span>📖 ${isbn}</span><span style="color:#aabb88; font-weight:bold;">${tagText}</span>`;
   
-  listEl.appendChild(li); // 一番下に追加
+  listEl.appendChild(li);
   countEl.textContent = scannedSet.size;
 }
 
-// 自作モーダルの表示・非表示制御
+// モーダル制御
 function showModal(text) {
   isModalOpen = true;
   document.getElementById("modalMessage").innerText = text;
@@ -103,15 +95,13 @@ function closeModal() {
   document.getElementById("modalOverlay").style.display = "none";
   setTimeout(() => {
     isModalOpen = false;
-    lastScannedTime = Date.now(); // 閉じた直後の連続判定を防止
+    lastScannedTime = Date.now();
   }, 500);
 }
 
-// 「スキャンを終了して戻る」ボタンの処理
+// 終了して戻る処理
 function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
-  
-  // スマホのLINE等で window.close() が効かない場合の安全網（history.back）
   window.close();
   setTimeout(() => {
     if (!window.closed) {
