@@ -5,22 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <style>
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-    #interactive.viewport { width: 100%; height: 100%; position: relative; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body, html { width: 100%; height: 100%; display: flex; flex-direction: column; background: #f4f4f4; }
+    
+    /* 上半分：カメラエリア */
+    #interactive.viewport { width: 100%; height: 45vh; background: #000; position: relative; }
     #interactive.viewport video, #interactive.viewport canvas { width: 100%; height: 100%; object-fit: cover; }
-    #error-log { color: #ff6b6b; padding: 12px; font-size: 13px; font-family: sans-serif; word-break: break-all; }
+    
+    /* 下半分：スキャン済みリストエリア */
+    .list-container { flex: 1; padding: 12px; overflow-y: auto; }
+    .list-title { font-size: 14px; font-weight: bold; color: #555; margin-bottom: 8px; }
+    .scan-list { list-style: none; }
+    .scan-item { background: #fff; padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    
+    /* 下部固定：完了ボタン */
+    .footer { padding: 10px 12px; background: #fff; border-top: 1px solid #ddd; }
+    .btn-close { width: 100%; padding: 12px; background: #aabb88; color: #fff; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; }
   </style>
 </head>
 <body>
+
+  <!-- カメラ映像領域 -->
   <div id="interactive" class="viewport"></div>
-  <div id="error-log"></div>
+
+  <!-- スキャン結果リアルタイム表示領域 -->
+  <div class="list-container">
+    <div class="list-title">スキャン済み一覧 (<span id="count">0</span>冊)</div>
+    <ul id="scanList" class="scan-list"></ul>
+  </div>
+
+  <!-- 終了ボタン -->
+  <div class="footer">
+    <button type="button" class="btn-close" onclick="window.close()">スキャンを終了して戻る</button>
+  </div>
 
   <script>
     let lastScannedTime = 0;
-
-    function logError(msg) {
-      document.getElementById('error-log').innerText = msg;
-    }
+    const scannedSet = new Set();
 
     // カメラ起動処理
     Quagga.init({
@@ -28,33 +49,48 @@
         name: "Live",
         type: "LiveStream",
         target: document.querySelector('#interactive'),
-        constraints: {
-          facingMode: "environment", // 外カメラ（背面）を指定
-          width: { min: 640, ideal: 1280 },
-          height: { min: 480, ideal: 720 }
-        }
+        constraints: { facingMode: "environment" }
       },
       decoder: { readers: ["ean_reader"] }
     }, function(err) {
-      if (err) {
-        console.error("Camera Init Error:", err);
-        logError("カメラエラー: " + (err.name || "") + " - " + (err.message || err));
-        return;
-      }
-      Quagga.start();
+      if (!err) Quagga.start();
     });
 
-    // バーコード検知時の処理
+    // バーコード検知時処理
     Quagga.onDetected(function(result) {
       const now = Date.now();
-      if (now - lastScannedTime < 1500) return;
+      if (now - lastScannedTime < 1500) return; // 連続読み取り防止
 
       const code = result.codeResult.code;
       if (code && code.length === 13 && (code.startsWith("978") || code.startsWith("979"))) {
         lastScannedTime = now;
-        window.parent.postMessage({ type: "SCAN_ISBN", isbn: code }, "*");
+
+        // 重複チェック
+        if (scannedSet.has(code)) return;
+        scannedSet.add(code);
+
+        // 1. このカメラ画面のリストに追加表示
+        renderItem(code);
+
+        // 2. 裏のGAS（親画面）へISBNをリアルタイム送信
+        if (window.opener) {
+          window.opener.postMessage({ type: "SCAN_ISBN", isbn: code }, "*");
+        }
       }
     });
+
+    // リストにアイテムを追加描画する関数
+    function renderItem(isbn) {
+      const listEl = document.getElementById("scanList");
+      const countEl = document.getElementById("count");
+      
+      const li = document.createElement("li");
+      li.className = "scan-item";
+      li.innerHTML = `<span>📖 ${isbn}</span><span style="color:#aabb88; font-weight:bold;">追加済み</span>`;
+      
+      listEl.insertBefore(li, listEl.firstChild); // 新しいものを一番上に追加
+      countEl.textContent = scannedSet.size;
+    }
   </script>
 </body>
 </html>
