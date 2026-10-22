@@ -95,21 +95,17 @@ function closeAndReturn() {
 
   const isbnList = Array.from(scannedSet);
 
-  if (isbnList.length === 0) {
-    showFinishScreen();
-    return;
-  }
-
-  const btn = document.querySelector(".btn-close");
-  if (btn) btn.disabled = true;
-
-  // カンマ区切りの文字列にする（例: "9784000000000,9784000000001"）
+  // カンマ区切りの文字列を作成
   const isbnsParam = isbnList.join(",");
 
-  // 自分のLIFF URLへパラメータ付きでダイレクト遷移
-  const liffUrl = "https://liff.line.me/2012030246-XEKrF6wY?scannedIsbns=" + encodeURIComponent(isbnsParam);
+  // 1. LIFF IDの取得（URLから渡されている場合はそれを使い、なければ直書き）
+  const params = new URLSearchParams(window.location.search);
+  const liffId = params.get("liffId") || "2012030246-XEKrF6wY";
 
-  window.location.href = liffUrl;
+  // 2. LIFF URLへパラメータ付きで遷移（同一タブ内遷移）
+  const targetUrl = `https://liff.line.me/${liffId}?scannedIsbns=${encodeURIComponent(isbnsParam)}`;
+  
+  window.location.href = targetUrl;
 }
 
 // スキャン完了後の案内表示
