@@ -8,24 +8,37 @@
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
     #interactive.viewport { width: 100%; height: 100%; position: relative; }
     #interactive.viewport video, #interactive.viewport canvas { width: 100%; height: 100%; object-fit: cover; }
+    #error-log { color: #ff6b6b; padding: 12px; font-size: 13px; font-family: sans-serif; word-break: break-all; }
   </style>
 </head>
 <body>
   <div id="interactive" class="viewport"></div>
+  <div id="error-log"></div>
 
   <script>
+    let lastScannedTime = 0;
+
+    function logError(msg) {
+      document.getElementById('error-log').innerText = msg;
+    }
+
     // カメラ起動処理
     Quagga.init({
       inputStream: {
         name: "Live",
         type: "LiveStream",
         target: document.querySelector('#interactive'),
-        constraints: { facingMode: "environment" }
+        constraints: {
+          facingMode: "environment", // 外カメラ（背面）を指定
+          width: { min: 640, ideal: 1280 },
+          height: { min: 480, ideal: 720 }
+        }
       },
-      decoder: { readers: ["ean_reader"] } // JAN/ISBN (EAN-13)
+      decoder: { readers: ["ean_reader"] }
     }, function(err) {
       if (err) {
         console.error("Camera Init Error:", err);
+        logError("カメラエラー: " + (err.name || "") + " - " + (err.message || err));
         return;
       }
       Quagga.start();
@@ -34,12 +47,11 @@
     // バーコード検知時の処理
     Quagga.onDetected(function(result) {
       const now = Date.now();
-      // 前回の読み取りから1.5秒以内の連打検出は無視する
       if (now - lastScannedTime < 1500) return;
-      
+
       const code = result.codeResult.code;
-      // 978 または 979 で始まる13桁のISBNコードのみ親画面（GAS）へ送信
       if (code && code.length === 13 && (code.startsWith("978") || code.startsWith("979"))) {
+        lastScannedTime = now;
         window.parent.postMessage({ type: "SCAN_ISBN", isbn: code }, "*");
       }
     });
