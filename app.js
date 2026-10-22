@@ -1,5 +1,3 @@
-// app.js （修正後・全コード）
-
 const MAX_BOOKS = 20;
 let lastScannedTime = 0;
 const scannedSet = new Set();
