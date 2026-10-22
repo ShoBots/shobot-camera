@@ -1,3 +1,5 @@
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec";
+
 const MAX_BOOKS = 20;
 let lastScannedTime = 0;
 const scannedSet = new Set();
@@ -57,18 +59,8 @@ Quagga.onDetected(function(result) {
 
     scannedSet.add(code);
     renderItem(code, false);
-    sendToParent(code);
   }
 });
-
-// データ送信（postMessage + localStorageバックアップ）
-function sendToParent(code) {
-  const target = window.opener || window.parent;
-  if (target && target !== window) {
-    target.postMessage({ type: "SCAN_ISBN", isbn: code }, "*");
-  }
-  localStorage.setItem("LAST_SCANNED_ISBN", code + "_" + Date.now());
-}
 
 // リスト描画処理
 function renderItem(isbn, isInitial) {
@@ -100,31 +92,48 @@ function closeModal() {
 }
 
 // 終了して戻る処理
-// app.js
-
 function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
 
-  // 1. PC等のポップアップ（window.openerが存在する）場合
-  if (window.opener && !window.opener.closed) {
-    window.close();
+  const isbnList = Array.from(scannedSet);
+
+  // スキャンが0件の場合はそのまま完了表示
+  if (isbnList.length === 0) {
+    showFinishScreen();
     return;
   }
 
-  // 2. LINEアプリ内ブラウザ（LIFF）で開かれている場合
-  if (typeof liff !== 'undefined' && liff.isInClient && liff.isInClient()) {
-    // LINEアプリの専用APIで画面を閉じる
-    liff.closeWindow();
-    return;
-  }
+  // 二重押し防止
+  const btn = document.querySelector(".btn-close");
+  if (btn) btn.disabled = true;
 
-  // 3. 上記で閉じられない場合（スマホのLINE内Web表示 / Safari / Chromeなど）
-  // 強制的にGAS（親画面）のURLへリダイレクトして戻す
-  const GAS_URL = "https://script.google.com/macros/s/YOUR_GAS_DEPLOYMENT_ID/exec"; // ★ご自身のGAS URL
-  const scannedList = Array.from(scannedSet).join(",");
-  
-  // キャッシュ回避のタイムスタンプ(_t)を付けて強制遷移
-  const targetUrl = GAS_URL + "?scannedIsbns=" + encodeURIComponent(scannedList) + "&_t=" + Date.now();
-  
-  window.location.replace(targetUrl);
+  // まとめて1回だけGAS（doPost）へ送信
+  fetch(GAS_WEB_APP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8",
+    },
+    body: JSON.stringify({ isbns: isbnList })
+  })
+  .then(res => res.json())
+  .then(data => {
+    showFinishScreen();
+  })
+  .catch(err => {
+    showModal("送信に失敗しました。もう一度お試しください。");
+    if (btn) btn.disabled = false;
+  });
+}
+
+// スキャン完了後の案内表示
+function showFinishScreen() {
+  document.body.innerHTML = `
+    <div style="padding: 50px 20px; text-align: center; font-family: sans-serif;">
+      <h2 style="color: #aabb88; margin-bottom: 16px;">スキャン完了</h2>
+      <p style="font-size: 14px; color: #333; line-height: 1.6; margin-bottom: 24px;">
+        データを保存しました。<br>
+        画面上の「✕」ボタン、または左上の「＜」で元の画面にお戻りください。
+      </p>
+    </div>
+  `;
 }
