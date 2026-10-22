@@ -94,15 +94,12 @@ function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
 
   const isbnList = Array.from(scannedSet);
-
-  // カンマ区切りの文字列を作成
   const isbnsParam = isbnList.join(",");
 
-  // 1. LIFF IDの取得（URLから渡されている場合はそれを使い、なければ直書き）
   const params = new URLSearchParams(window.location.search);
   const liffId = params.get("liffId") || "2012030246-XEKrF6wY";
 
-  // 2. LIFF URLへパラメータ付きで遷移（同一タブ内遷移）
+  // LIFFメイン画面へ同一画面で直接移動
   const targetUrl = `https://liff.line.me/${liffId}?scannedIsbns=${encodeURIComponent(isbnsParam)}`;
   
   window.location.href = targetUrl;
