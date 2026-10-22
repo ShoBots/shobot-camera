@@ -1,4 +1,4 @@
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec";
+// app.js （修正後・全コード）
 
 const MAX_BOOKS = 20;
 let lastScannedTime = 0;
@@ -70,7 +70,7 @@ function renderItem(isbn, isInitial) {
   const li = document.createElement("li");
   li.className = "scan-item";
   const tagText = isInitial ? "追加済み(既存)" : "追加済み";
-  li.innerHTML = `<span>📖 ${isbn}</span><span style="color:#aabb88; font-weight:bold;">${tagText}</span>`;
+  li.innerHTML = `<span>📚 ${isbn}</span><span style="color:#aabb88; font-weight:bold;">${tagText}</span>`;
   
   listEl.appendChild(li);
   countEl.textContent = scannedSet.size;
@@ -91,7 +91,7 @@ function closeModal() {
   }, 500);
 }
 
-// 終了して戻る処理
+// 終了して戻る処理（URLパラメータ引き継ぎ方式）
 function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
 
@@ -105,39 +105,13 @@ function closeAndReturn() {
   const btn = document.querySelector(".btn-close");
   if (btn) btn.disabled = true;
 
-  // CSP制限（connect-src）を回避するため、fetch ではなく隠し iframe + form で送信[cite: 7]
-  const iframeName = "hidden_upload_frame";
-  let iframe = document.getElementById(iframeName);
-  
-  if (!iframe) {
-    iframe = document.createElement("iframe");
-    iframe.name = iframeName;
-    iframe.id = iframeName;
-    iframe.style.display = "none";
-    document.body.appendChild(iframe);
-  }
+  // カンマ区切りの文字列にする（例: "9784000000000,9784000000001"）
+  const isbnsParam = isbnList.join(",");
 
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = GAS_WEB_APP_URL;
-  form.target = iframeName;
+  // 自分のLIFF URLへパラメータ付きでダイレクト遷移
+  const liffUrl = "https://liff.line.me/2012030246-XEKrF6wY?scannedIsbns=" + encodeURIComponent(isbnsParam);
 
-  const input = document.createElement("input");
-  input.type = "hidden";
-  input.name = "postData";
-  input.value = JSON.stringify({ isbns: isbnList });
-  form.appendChild(input);
-
-  document.body.appendChild(form);
-  
-  // 送信実行
-  form.submit();
-
-  // 送信後にformを削除して完了画面を表示
-  setTimeout(() => {
-    document.body.removeChild(form);
-    showFinishScreen();
-  }, 800);
+  window.location.href = liffUrl;
 }
 
 // スキャン完了後の案内表示
