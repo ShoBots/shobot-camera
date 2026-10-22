@@ -96,10 +96,11 @@ function closeAndReturn() {
   const isbnList = Array.from(scannedSet);
   const isbnsParam = isbnList.join(",");
 
+  // URLパラメータから liffId を取得（無ければ設定済みのLIFF ID）
   const params = new URLSearchParams(window.location.search);
   const liffId = params.get("liffId") || "2012030246-XEKrF6wY";
 
-  // LIFFメイン画面へ同一画面で直接移動
+  // LIFFメイン画面へ戻る（直移動）
   const targetUrl = `https://liff.line.me/${liffId}?scannedIsbns=${encodeURIComponent(isbnsParam)}`;
   
   window.location.href = targetUrl;
