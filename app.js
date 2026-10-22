@@ -105,16 +105,26 @@ function closeModal() {
 function closeAndReturn() {
   try { Quagga.stop(); } catch(e) {}
 
-  // 1. PCブラウザ等の場合：通常通りウィンドウを閉じるを試みる
+  // 1. PC等のポップアップ（window.openerが存在する）場合
   if (window.opener && !window.opener.closed) {
     window.close();
     return;
   }
 
-  // 2. LINE内ブラウザ等の場合：スキャンしたISBNを連れてGAS（親画面）のURLへ直接リダイレクトして戻る
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec";
+  // 2. LINEアプリ内ブラウザ（LIFF）で開かれている場合
+  if (typeof liff !== 'undefined' && liff.isInClient && liff.isInClient()) {
+    // LINEアプリの専用APIで画面を閉じる
+    liff.closeWindow();
+    return;
+  }
+
+  // 3. 上記で閉じられない場合（スマホのLINE内Web表示 / Safari / Chromeなど）
+  // 強制的にGAS（親画面）のURLへリダイレクトして戻す
+  const GAS_URL = "https://script.google.com/macros/s/YOUR_GAS_DEPLOYMENT_ID/exec"; // ★ご自身のGAS URL
   const scannedList = Array.from(scannedSet).join(",");
   
-  // GAS側にスキャン結果を渡して画面を再開
-  window.location.href = GAS_URL + "?scannedIsbns=" + encodeURIComponent(scannedList);
+  // キャッシュ回避のタイムスタンプ(_t)を付けて強制遷移
+  const targetUrl = GAS_URL + "?scannedIsbns=" + encodeURIComponent(scannedList) + "&_t=" + Date.now();
+  
+  window.location.replace(targetUrl);
 }
