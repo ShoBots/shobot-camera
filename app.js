@@ -45,7 +45,7 @@ Quagga.onDetected(function(result) {
 
     // 重複チェック
     if (scannedSet.has(code)) {
-      showModal("既に同じISBNコードが入力されています");
+      showModal("既に入力されているISBNコードです");
       return;
     }
 
