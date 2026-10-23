@@ -5,6 +5,9 @@ let userLineId = "";
 let isModalOpen = false;
 let pendingBooksData = null;
 
+let currentEditingUserBookId = null;
+let previousScreenId = 'screen-lf2';
+
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
 const LIFF_ID = "2012030246-XEKrF6wY"; // LIFF IDを直接指定
 
@@ -46,7 +49,7 @@ window.addEventListener("DOMContentLoaded", function() {
   }
 });
 
-// --- 2. バーコード自動検知 (Quagga) ---
+// バーコード自動検知 (Quagga)
 Quagga.onDetected(function(result) {
   if (isModalOpen) return;
 
@@ -60,7 +63,7 @@ Quagga.onDetected(function(result) {
   }
 });
 
-// --- 3. 手動入力機能 (GAS LIFFjs.htmlより移植) ---
+// 手動入力機能
 function addManualIsbn() {
   const inputEl = document.getElementById("manualIsbnInput");
   if (!inputEl) return;
@@ -85,7 +88,7 @@ function addManualIsbn() {
   inputEl.value = "";
 }
 
-// --- 4. リスト追加・操作ガード (GAS LIFFjs.htmlより移植) ---
+// リスト追加・操作ガード
 function addIsbnToList(isbn) {
   if (scannedIsbns.has(isbn)) {
     showModal("既に同じISBNコードが入力されています");
@@ -155,7 +158,7 @@ function renderLf1List() {
   }
 }
 
-// --- 5. GASバックエンド通信 (登録処理) ---
+// GASバックエンド通信 (登録処理)
 function submitScanList(forceRegister = false) {
   if (scannedIsbns.size === 0) return;
 
@@ -184,7 +187,7 @@ function submitScanList(forceRegister = false) {
       action: "registerBooks",
       books: booksData,
       lineUserId: userLineId,
-      forceRegister: forceRegister // ★ 強制登録フラグを送信
+      forceRegister: forceRegister // 強制登録フラグを送信
     })
   })
   .then(res => res.json())
@@ -193,7 +196,7 @@ function submitScanList(forceRegister = false) {
       pendingBooksData = null;
       onRegisterSuccess(response);
     } else if (response.status === "duplicate_warning") {
-      // ★ 重複警告を受け取った場合
+      // 重複警告を受け取った場合
       const loadingEl = document.getElementById("loadingOverlay");
       if (loadingEl) loadingEl.style.display = "none";
       
@@ -230,7 +233,7 @@ function onRegisterSuccess(response) {
         <span class="result-title">${item.title}</span>
         <span class="result-cat">区分: ${item.category}</span>
       </div>
-      <button class="btn-edit-sm" onclick="openLf3Edit(${item.userBookId})">修正</button>
+      <button class="btn-edit-sm" onclick="openLf3Edit(${item.userBookId}, 'screen-lf2')">修正</button>
     `;
     resultListEl.appendChild(li);
   });
@@ -260,8 +263,45 @@ function goToLf1ForMore() {
   document.getElementById("screen-lf1").style.display = "block";
 }
 
-function openLf3Edit(userBookId) {
-  showModal("修正画面 (LF3) へ遷移: ID " + userBookId);
+function openLf3Edit(userBookId, fromScreenId = 'screen-lf2') {
+  currentEditingUserBookId = userBookId;
+  previousScreenId = fromScreenId;
+
+  const loadingEl = document.getElementById("loadingOverlay");
+  if (loadingEl) loadingEl.style.display = "block";
+
+  fetch(GAS_WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({
+      action: "getBookDetail",
+      userBookId: userBookId
+    })
+  })
+  .then(res => res.json())
+  .then(response => {
+    if (loadingEl) loadingEl.style.display = "none";
+    if (response.status === "success" && response.data) {
+      const book = response.data;
+      
+      // 画面要素(LF3)へ値をセット
+      document.getElementById('singleEditTitle').textContent = book.title;
+      document.getElementById('singleEditAuthor').textContent = book.authorName;
+      document.getElementById('singleEditLabel').textContent = book.publishingLabelName;
+      document.getElementById('singleEditCategory').value = book.bookType;
+      document.getElementById('singleEditStatus').value = book.status;
+
+      // 画面切り替え (screen-lf3 を表示)
+      document.getElementById(previousScreenId).style.display = 'none';
+      document.getElementById('screen-lf3').style.display = 'block';
+    } else {
+      showModal("データの取得に失敗しました:\n" + (response.message || "データなし"));
+    }
+  })
+  .catch(err => {
+    if (loadingEl) loadingEl.style.display = "none";
+    showModal("通信エラーが発生しました:\n" + err.message);
+  });
 }
 
 function closeLiff() {
@@ -349,4 +389,104 @@ function closeModal() {
     isModalOpen = false;
     lastScannedTime = Date.now();
   }, 500);
+}
+
+// LF3: 変更内容を保存する
+function saveSingleEdit() {
+  if (!currentEditingUserBookId) return;
+
+  const category = document.getElementById('singleEditCategory').value;
+  const status = document.getElementById('singleEditStatus').value;
+
+  const loadingEl = document.getElementById("loadingOverlay");
+  if (loadingEl) loadingEl.style.display = "block";
+
+  fetch(GAS_WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({
+      action: "updateSingleBook",
+      userBookId: currentEditingUserBookId,
+      bookType: category,
+      status: status
+    })
+  })
+  .then(res => res.json())
+  .then(response => {
+    if (loadingEl) loadingEl.style.display = "none";
+    if (response.status === "success") {
+      showModal("変更を保存しました");
+      updateLf2ListCategoryLocal(currentEditingUserBookId, category);
+      cancelSingleEdit();
+    } else {
+      showModal("保存に失敗しました:\n" + (response.message || "エラー"));
+    }
+  })
+  .catch(err => {
+    if (loadingEl) loadingEl.style.display = "none";
+    showModal("通信エラーが発生しました:\n" + err.message);
+  });
+}
+
+// LF3: この本を削除する
+function deleteSingleBook() {
+  if (!currentEditingUserBookId) return;
+
+  if (!confirm("この本を蔵書から削除してもよろしいですか？")) {
+    return;
+  }
+
+  const loadingEl = document.getElementById("loadingOverlay");
+  if (loadingEl) loadingEl.style.display = "block";
+
+  fetch(GAS_WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({
+      action: "deleteSingleBook",
+      userBookId: currentEditingUserBookId
+    })
+  })
+  .then(res => res.json())
+  .then(response => {
+    if (loadingEl) loadingEl.style.display = "none";
+    if (response.status === "success") {
+      showModal("削除しました");
+      removeLf2ListItemLocal(currentEditingUserBookId);
+      cancelSingleEdit();
+    } else {
+      showModal("削除に失敗しました:\n" + (response.message || "エラー"));
+    }
+  })
+  .catch(err => {
+    if (loadingEl) loadingEl.style.display = "none";
+    showModal("通信エラーが発生しました:\n" + err.message);
+  });
+}
+
+// LF3: 変更せずに戻る
+function cancelSingleEdit() {
+  currentEditingUserBookId = null;
+  document.getElementById('screen-lf3').style.display = 'none';
+  document.getElementById(previousScreenId).style.display = 'block';
+}
+
+// 登録結果リスト（LF2）側の表示更新・削除用ヘルパー
+function updateLf2ListCategoryLocal(userBookId, newCategory) {
+  const editBtn = document.querySelector(`button[onclick*="openLf3Edit(${userBookId}"]`);
+  if (editBtn) {
+    const resultItem = editBtn.closest('.result-item');
+    if (resultItem) {
+      const catSpan = resultItem.querySelector('.result-cat');
+      if (catSpan) catSpan.textContent = `区分: ${newCategory}`;
+    }
+  }
+}
+
+function removeLf2ListItemLocal(userBookId) {
+  const editBtn = document.querySelector(`button[onclick*="openLf3Edit(${userBookId}"]`);
+  if (editBtn) {
+    const resultItem = editBtn.closest('.result-item');
+    if (resultItem) resultItem.remove();
+  }
 }
