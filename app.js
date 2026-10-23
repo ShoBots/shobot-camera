@@ -1,5 +1,5 @@
 const MAX_BOOKS = 20;
-let scannedIsbns = new Map(); // key: ISBN, value: category
+let scannedIsbns = new Map(); // key: ISBN, value: category (文字列)
 let lastScannedTime = 0;
 let userLineId = "";
 let isModalOpen = false;
@@ -9,11 +9,10 @@ let currentEditingUserBookId = null;
 let previousScreenId = 'screen-lf2';
 
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
-const LIFF_ID = "2012030246-XEKrF6wY"; // LIFF IDを直接指定
+const LIFF_ID = "2012030246-XEKrF6wY";
 
 // --- 1. 初期化 ＆ LIFFログイン ---
 window.addEventListener("DOMContentLoaded", function() {
-  // Quagga起動
   Quagga.init({
     inputStream: {
       name: "Live",
@@ -26,7 +25,6 @@ window.addEventListener("DOMContentLoaded", function() {
     if (!err) Quagga.start();
   });
 
-  // LIFF初期化 & LINEユーザーID取得
   if (typeof liff !== 'undefined') {
     liff.init({ liffId: LIFF_ID })
       .then(() => {
@@ -100,21 +98,20 @@ function addIsbnToList(isbn) {
     return;
   }
 
+  // カテゴリだけを記憶（ステータス保存は不要化）
   const currentBulkCat = document.getElementById("bulkCategory").value;
-  const currentBulkStatus = document.getElementById("bulkStatus").value;
-  scannedIsbns.set(isbn, { category: currentBulkCat, status: currentBulkStatus });
+  scannedIsbns.set(isbn, currentBulkCat);
   renderLf1List();
 }
 
+// 一括指定（書籍区分のみ適用）
 function applyBulkSettings() {
   const selectedCat = document.getElementById("bulkCategory").value;
-  const selectedStatus = document.getElementById("bulkStatus").value;
 
-  for (let [isbn, item] of scannedIsbns.entries()) {
-    scannedIsbns.set(isbn, {
-      category: selectedCat !== "未設定" ? selectedCat : (item.category || "未設定"),
-      status: selectedStatus
-    });
+  for (let isbn of scannedIsbns.keys()) {
+    if (selectedCat !== "未設定") {
+      scannedIsbns.set(isbn, selectedCat);
+    }
   }
   
   renderLf1List();
@@ -122,8 +119,9 @@ function applyBulkSettings() {
 
 // リスト内の個別の「書籍区分」を変更した時用
 function updateIndividualCategory(isbn, category) {
-  const item = scannedIsbns.get(isbn);
-  if (item) item.category = category;
+  if (scannedIsbns.has(isbn)) {
+    scannedIsbns.set(isbn, category);
+  }
 }
 
 function removeIsbn(isbn) {
@@ -142,17 +140,17 @@ function renderLf1List() {
   if (!listEl) return;
   listEl.innerHTML = "";
 
-  scannedIsbns.forEach((data, isbn) => {
+  scannedIsbns.forEach((category, isbn) => {
     const li = document.createElement("li");
     li.className = "isbn-item";
     li.innerHTML = `
       <span>${isbn}</span>
       <div style="display: flex; align-items: center; gap: 6px;">
         <select class="select-category-sm" onchange="updateIndividualCategory('${isbn}', this.value)">
-          <option value="未設定" ${data.category === '未設定' ? 'selected' : ''}>未設定</option>
-          <option value="漫画" ${data.category === '漫画' ? 'selected' : ''}>漫画</option>
-          <option value="小説" ${data.category === '小説' ? 'selected' : ''}>小説</option>
-          <option value="その他" ${data.category === 'その他' ? 'selected' : ''}>その他</option>
+          <option value="未設定" ${category === '未設定' ? 'selected' : ''}>未設定</option>
+          <option value="漫画" ${category === '漫画' ? 'selected' : ''}>漫画</option>
+          <option value="小説" ${category === '小説' ? 'selected' : ''}>小説</option>
+          <option value="その他" ${category === 'その他' ? 'selected' : ''}>その他</option>
         </select>
         <button class="btn-delete" onclick="removeIsbn('${isbn}')">削除</button>
       </div>
@@ -183,11 +181,14 @@ function submitScanList(forceRegister = false) {
     submitBtn.textContent = "登録中...";
   }
 
-  const booksData = pendingBooksData || Array.from(scannedIsbns.entries()).map(([isbn, data]) => {
+  // ★ 画面のドロップダウンから選択中のステータスを取得して一括指定
+  const currentBulkStatus = document.getElementById("bulkStatus").value;
+
+  const booksData = pendingBooksData || Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
     return {
       isbn: isbn,
-      category: typeof data === 'object' ? data.category : data,
-      status: typeof data === 'object' ? data.status : '未読'
+      category: category || '未設定',
+      status: currentBulkStatus
     };
   });
 
@@ -198,7 +199,7 @@ function submitScanList(forceRegister = false) {
       action: "registerBooks",
       books: booksData,
       lineUserId: userLineId,
-      forceRegister: forceRegister // 強制登録フラグを送信
+      forceRegister: forceRegister
     })
   })
   .then(res => res.json())
@@ -207,7 +208,6 @@ function submitScanList(forceRegister = false) {
       pendingBooksData = null;
       onRegisterSuccess(response);
     } else if (response.status === "duplicate_warning") {
-      // 重複警告を受け取った場合
       if (loadingEl) loadingEl.style.display = "none";
       
       if (submitBtn) {
@@ -215,7 +215,7 @@ function submitScanList(forceRegister = false) {
         submitBtn.textContent = "登録";
       }
 
-      pendingBooksData = booksData; // 送信データを一時保持
+      pendingBooksData = booksData;
       showDuplicateConfirmModal(response.duplicates);
     } else {
       onRegisterFailure(new Error(response.message || "登録エラー"));
@@ -294,14 +294,12 @@ function openLf3Edit(userBookId, fromScreenId = 'screen-lf2') {
     if (response.status === "success" && response.data) {
       const book = response.data;
       
-      // 画面要素(LF3)へ値をセット
       document.getElementById('singleEditTitle').textContent = book.title;
       document.getElementById('singleEditAuthor').textContent = book.authorName;
       document.getElementById('singleEditLabel').textContent = book.publishingLabelName;
       document.getElementById('singleEditCategory').value = book.bookType;
       document.getElementById('singleEditStatus').value = book.status;
 
-      // 画面切り替え (screen-lf3 を表示)
       document.getElementById(previousScreenId).style.display = 'none';
       document.getElementById('screen-lf3').style.display = 'block';
     } else {
@@ -322,14 +320,13 @@ function closeLiff() {
   }
 }
 
-// モーダル表示制御
 function showModal(text) {
   isModalOpen = true;
   document.getElementById("modalMessage").innerText = text;
   
   const buttonsContainer = document.getElementById("modalButtons");
   const extraBtn = document.getElementById("btnModalCancel");
-  if (extraBtn) extraBtn.remove(); // 既存の動的ボタンがあれば削除
+  if (extraBtn) extraBtn.remove();
 
   const mainBtn = buttonsContainer.querySelector("button");
   if (mainBtn) {
@@ -341,7 +338,6 @@ function showModal(text) {
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
-// 重複確認用モーダル表示（ボタン2つ化：左「キャンセル」 / 右「登録」）
 function showDuplicateConfirmModal(duplicates) {
   isModalOpen = true;
   
@@ -352,7 +348,6 @@ function showDuplicateConfirmModal(duplicates) {
 
   const buttonsContainer = document.getElementById("modalButtons");
   
-  // 左側に「キャンセル」ボタンを動的追加
   if (!document.getElementById("btnModalCancel")) {
     const cancelBtn = document.createElement("button");
     cancelBtn.id = "btnModalCancel";
@@ -362,7 +357,6 @@ function showDuplicateConfirmModal(duplicates) {
     buttonsContainer.insertBefore(cancelBtn, buttonsContainer.firstChild);
   }
 
-  // 右側のボタンを「登録」に変更
   const confirmBtn = buttonsContainer.querySelector(".modal-btn, .btn-submit");
   if (confirmBtn) {
     confirmBtn.className = "btn-submit";
@@ -373,17 +367,14 @@ function showDuplicateConfirmModal(duplicates) {
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
-// 重複確認で「登録」を押した時
 function onConfirmDuplicate() {
   closeModal();
-  submitScanList(true); // forceRegister = true で再送信
+  submitScanList(true);
 }
 
-// モーダルを閉じる処理（リセット）
 function closeModal() {
   document.getElementById("modalOverlay").style.display = "none";
   
-  // 追加した「キャンセル」ボタンを削除して初期状態に戻す
   const extraBtn = document.getElementById("btnModalCancel");
   if (extraBtn) extraBtn.remove();
 
@@ -401,7 +392,6 @@ function closeModal() {
   }, 500);
 }
 
-// LF3: 変更内容を保存する
 function saveSingleEdit() {
   if (!currentEditingUserBookId) return;
 
@@ -438,7 +428,6 @@ function saveSingleEdit() {
   });
 }
 
-// LF3: この本を削除する
 function deleteSingleBook() {
   if (!currentEditingUserBookId) return;
 
@@ -474,14 +463,12 @@ function deleteSingleBook() {
   });
 }
 
-// LF3: 変更せずに戻る
 function cancelSingleEdit() {
   currentEditingUserBookId = null;
   document.getElementById('screen-lf3').style.display = 'none';
   document.getElementById(previousScreenId).style.display = 'block';
 }
 
-// 登録結果リスト（LF2）側の表示更新・削除用ヘルパー
 function updateLf2ListCategoryLocal(userBookId, newCategory) {
   const editBtn = document.querySelector(`button[onclick*="openLf3Edit(${userBookId}"]`);
   if (editBtn) {
