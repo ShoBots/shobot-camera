@@ -112,7 +112,7 @@ function applyBulkSettings() {
 
   for (let [isbn, item] of scannedIsbns.entries()) {
     scannedIsbns.set(isbn, {
-      category: selectedCat !== "未設定" ? selectedCat : item.category,
+      category: selectedCat !== "未設定" ? selectedCat : (item.category || "未設定"),
       status: selectedStatus
     });
   }
