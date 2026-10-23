@@ -60,19 +60,18 @@
   </div>
 
   <!-- 3 蔵書データ修正画面(LF3) (単行本) -->
-  <div id="screen-edit-single" style="display: none;">
+  <div id="screen-lf3" style="display: none;">
     <h1>蔵書データ修正</h1>
-  
-    <!-- 上部：書籍基本情報 -->
+    
+    <!-- 書籍基本情報 (表示のみ) -->
     <div class="card">
-      <!-- 既存の.result-titleと.result-catを流用 -->
       <div id="singleEditTitle" class="result-title">書籍タイトル</div>
       <div class="result-cat" style="margin-top: 4px;">
         <span id="singleEditAuthor">著者名</span> / <span id="singleEditLabel">出版レーベル</span>
       </div>
     </div>
-  
-    <!-- 中部：編集フォーム -->
+
+    <!-- 編集フォーム -->
     <div class="card">
       <div>
         <label class="label-title">書籍区分</label>
@@ -82,7 +81,7 @@
           <option value="その他">その他</option>
         </select>
       </div>
-  
+
       <div style="margin-top: 12px;">
         <label class="label-title">ステータス</label>
         <select id="singleEditStatus" class="select-category">
@@ -92,15 +91,15 @@
         </select>
       </div>
     </div>
-  
-    <!-- 下部固定ボタンエリア -->
+
+    <!-- 下部固定アクションボタン -->
     <div class="footer-bar">
       <button class="btn-submit" onclick="saveSingleEdit()">変更内容を保存する</button>
       <button class="btn-secondary" onclick="cancelSingleEdit()">変更せずに戻る</button>
       <button class="btn-delete btn-danger-full" onclick="deleteSingleBook()">この本を削除する</button>
     </div>
   </div>
-
+    
   <!-- 4. ダイアログ -->
   <div id="modalOverlay" class="modal-overlay" style="display: none;">
     <div class="modal-content">
