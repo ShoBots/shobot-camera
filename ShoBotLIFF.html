@@ -24,12 +24,12 @@
       <button type="button" class="btn-submit" onclick="addManualIsbn()">追加</button>
     </div>
 
-    <!-- 書籍区分(一括指定) -->
+    <!-- 書籍区分(一括指定) & 読書ステータス -->
     <div class="card" id="bulk-card">
       <div class="bulk-group">
-        <label class="label-title">書籍区分(一括指定)</label>
+        <label class="label-title">書籍区分</label>
         <select id="bulkCategory" class="select-category" onchange="applyBulkSettings()">
-          <option value="未設定">書籍区分を選択</option>
+          <option value="未設定">区分を選択</option>
           <option value="漫画">漫画</option>
           <option value="小説">小説</option>
           <option value="その他">その他</option>
@@ -37,8 +37,8 @@
       </div>
 
       <div class="bulk-group">
-        <label class="label-title">読書ステータス(一括指定)</label>
-        <select id="bulkStatus" class="select-category" onchange="applyBulkSettings()">
+        <label class="label-title">読書ステータス</label>
+        <select id="bulkStatus" class="select-category">
           <option value="読了">読了</option>
           <option value="未読">未読</option>
           <option value="読み途中">読み途中</option>
