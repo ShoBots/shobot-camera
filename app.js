@@ -116,6 +116,7 @@ function applyBulkSettings() {
       status: selectedStatus
     });
   }
+  
   renderLf1List();
 }
 
@@ -141,17 +142,17 @@ function renderLf1List() {
   if (!listEl) return;
   listEl.innerHTML = "";
 
-  scannedIsbns.forEach((category, isbn) => {
+  scannedIsbns.forEach((data, isbn) => {
     const li = document.createElement("li");
     li.className = "isbn-item";
     li.innerHTML = `
       <span>${isbn}</span>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <select class="select-category-sm" onchange="updateIndividualCategory('${isbn}', this.value)">
-          <option value="未設定" ${category === '未設定' ? 'selected' : ''}>未設定</option>
-          <option value="漫画" ${category === '漫画' ? 'selected' : ''}>漫画</option>
-          <option value="小説" ${category === '小説' ? 'selected' : ''}>小説</option>
-          <option value="その他" ${category === 'その他' ? 'selected' : ''}>その他</option>
+          <option value="未設定" ${data.category === '未設定' ? 'selected' : ''}>未設定</option>
+          <option value="漫画" ${data.category === '漫画' ? 'selected' : ''}>漫画</option>
+          <option value="小説" ${data.category === '小説' ? 'selected' : ''}>小説</option>
+          <option value="その他" ${data.category === 'その他' ? 'selected' : ''}>その他</option>
         </select>
         <button class="btn-delete" onclick="removeIsbn('${isbn}')">削除</button>
       </div>
