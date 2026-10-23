@@ -100,23 +100,29 @@ function addIsbnToList(isbn) {
     return;
   }
 
-  const currentBulkValue = document.getElementById("bulkCategory").value;
-  scannedIsbns.set(isbn, currentBulkValue);
+  const currentBulkCat = document.getElementById("bulkCategory").value;
+  const currentBulkStatus = document.getElementById("bulkStatus").value;
+  scannedIsbns.set(isbn, { category: currentBulkCat, status: currentBulkStatus });
   renderLf1List();
 }
 
-function applyBulkCategory() {
-  const selected = document.getElementById("bulkCategory").value;
-  if (selected === "未設定") return;
+function applyBulkSettings() {
+  const selectedCat = document.getElementById("bulkCategory").value;
+  const selectedStatus = document.getElementById("bulkStatus").value;
 
-  for (let isbn of scannedIsbns.keys()) {
-    scannedIsbns.set(isbn, selected);
+  for (let [isbn, item] of scannedIsbns.entries()) {
+    scannedIsbns.set(isbn, {
+      category: selectedCat !== "未設定" ? selectedCat : item.category,
+      status: selectedStatus
+    });
   }
   renderLf1List();
 }
 
+// リスト内の個別の「書籍区分」を変更した時用
 function updateIndividualCategory(isbn, category) {
-  scannedIsbns.set(isbn, category);
+  const item = scannedIsbns.get(isbn);
+  if (item) item.category = category;
 }
 
 function removeIsbn(isbn) {
@@ -177,7 +183,7 @@ function submitScanList(forceRegister = false) {
   }
 
   const booksData = pendingBooksData || Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
-    return { isbn: isbn, category: category };
+    return { isbn: isbn, category: data.category, status: data.status };
   });
 
   fetch(GAS_WEB_APP_URL, {
