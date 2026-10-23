@@ -176,14 +176,14 @@ button {
   margin-bottom: 16px;
   line-height: 1.4;
 }
-.modal-btn {
-  width: 100%;
-  background: #aabb88;
-  color: #fff;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 6px;
-  font-weight: bold;
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+.modal-buttons button {
+  flex: 1;
 }
 
 /* ISBN入力フォーム */
