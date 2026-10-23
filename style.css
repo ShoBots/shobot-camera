@@ -133,6 +133,9 @@ button {
   border-radius: 8px;
   font-size: 0.95rem;
 }
+.btn-danger-full {
+  width: 100%;
+}
 
 /* 下部固定ボタンエリア */
 .footer-bar {
