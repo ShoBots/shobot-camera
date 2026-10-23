@@ -3,6 +3,7 @@ let scannedIsbns = new Map(); // key: ISBN, value: category
 let lastScannedTime = 0;
 let userLineId = "";
 let isModalOpen = false;
+let pendingBooksData = null;
 
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
 const LIFF_ID = "2012030246-XEKrF6wY"; // LIFF IDを直接指定
@@ -155,7 +156,7 @@ function renderLf1List() {
 }
 
 // --- 5. GASバックエンド通信 (登録処理) ---
-function submitScanList() {
+function submitScanList(forceRegister = false) {
   if (scannedIsbns.size === 0) return;
 
   if (!userLineId) {
@@ -172,24 +173,37 @@ function submitScanList() {
     submitBtn.textContent = "登録中...";
   }
 
-  const booksData = Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
+  const booksData = pendingBooksData || Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
     return { isbn: isbn, category: category };
   });
 
-  // GASへ POST リクエスト送信
   fetch(GAS_WEB_APP_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
     body: JSON.stringify({
       action: "registerBooks",
       books: booksData,
-      lineUserId: userLineId
+      lineUserId: userLineId,
+      forceRegister: forceRegister // ★ 強制登録フラグを送信
     })
   })
   .then(res => res.json())
   .then(response => {
     if (response.status === "success") {
+      pendingBooksData = null;
       onRegisterSuccess(response);
+    } else if (response.status === "duplicate_warning") {
+      // ★ 重複警告を受け取った場合
+      const loadingEl = document.getElementById("loadingOverlay");
+      if (loadingEl) loadingEl.style.display = "none";
+      
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "登録";
+      }
+
+      pendingBooksData = booksData; // 送信データを一時保持
+      showDuplicateConfirmModal(response.duplicates);
     } else {
       onRegisterFailure(new Error(response.message || "登録エラー"));
     }
@@ -262,11 +276,75 @@ function closeLiff() {
 function showModal(text) {
   isModalOpen = true;
   document.getElementById("modalMessage").innerText = text;
+  
+  const buttonsContainer = document.getElementById("modalButtons");
+  const extraBtn = document.getElementById("btnModalCancel");
+  if (extraBtn) extraBtn.remove(); // 既存の動的ボタンがあれば削除
+
+  const mainBtn = buttonsContainer.querySelector("button");
+  if (mainBtn) {
+    mainBtn.className = "modal-btn";
+    mainBtn.innerText = "閉じる";
+    mainBtn.onclick = closeModal;
+  }
+
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
+// 重複確認用モーダル表示（ボタン2つ化：左「キャンセル」 / 右「登録」）
+function showDuplicateConfirmModal(duplicates) {
+  isModalOpen = true;
+  
+  const titles = duplicates.map(d => `・${d.title}`).join("\n");
+  const msg = `以下の書籍は既に登録されています。\n重複して登録しますか？\n\n${titles}`;
+  
+  document.getElementById("modalMessage").innerText = msg;
+
+  const buttonsContainer = document.getElementById("modalButtons");
+  
+  // 左側に「キャンセル」ボタンを動的追加
+  if (!document.getElementById("btnModalCancel")) {
+    const cancelBtn = document.createElement("button");
+    cancelBtn.id = "btnModalCancel";
+    cancelBtn.className = "btn-secondary";
+    cancelBtn.innerText = "キャンセル";
+    cancelBtn.onclick = closeModal;
+    buttonsContainer.insertBefore(cancelBtn, buttonsContainer.firstChild);
+  }
+
+  // 右側のボタンを「登録」に変更
+  const confirmBtn = buttonsContainer.querySelector(".modal-btn, .btn-submit");
+  if (confirmBtn) {
+    confirmBtn.className = "btn-submit";
+    confirmBtn.innerText = "登録";
+    confirmBtn.onclick = onConfirmDuplicate;
+  }
+
+  document.getElementById("modalOverlay").style.display = "flex";
+}
+
+// 重複確認で「登録」を押した時
+function onConfirmDuplicate() {
+  closeModal();
+  submitScanList(true); // forceRegister = true で再送信
+}
+
+// モーダルを閉じる処理（リセット）
 function closeModal() {
   document.getElementById("modalOverlay").style.display = "none";
+  
+  // 追加した「キャンセル」ボタンを削除して初期状態に戻す
+  const extraBtn = document.getElementById("btnModalCancel");
+  if (extraBtn) extraBtn.remove();
+
+  const buttonsContainer = document.getElementById("modalButtons");
+  const mainBtn = buttonsContainer.querySelector("button");
+  if (mainBtn) {
+    mainBtn.className = "modal-btn";
+    mainBtn.innerText = "閉じる";
+    mainBtn.onclick = closeModal;
+  }
+
   setTimeout(() => {
     isModalOpen = false;
     lastScannedTime = Date.now();
