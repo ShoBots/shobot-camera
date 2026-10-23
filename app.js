@@ -183,8 +183,12 @@ function submitScanList(forceRegister = false) {
     submitBtn.textContent = "登録中...";
   }
 
-  const booksData = pendingBooksData || Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
-    return { isbn: isbn, category: data.category, status: data.status };
+  const booksData = pendingBooksData || Array.from(scannedIsbns.entries()).map(([isbn, data]) => {
+    return {
+      isbn: isbn,
+      category: typeof data === 'object' ? data.category : data,
+      status: typeof data === 'object' ? data.status : '未読'
+    };
   });
 
   fetch(GAS_WEB_APP_URL, {
@@ -204,7 +208,6 @@ function submitScanList(forceRegister = false) {
       onRegisterSuccess(response);
     } else if (response.status === "duplicate_warning") {
       // 重複警告を受け取った場合
-      const loadingEl = document.getElementById("loadingOverlay");
       if (loadingEl) loadingEl.style.display = "none";
       
       if (submitBtn) {
