@@ -4,9 +4,8 @@ let lastScannedTime = 0;
 let userLineId = "";
 let isModalOpen = false;
 
-// あなたのGAS Web App URLを設定
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"; 
-const LIFF_ID = "YOUR_LIFF_ID"; // LIFF IDを直接指定
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
+const LIFF_ID = "2012030246-XEKrF6wY"; // LIFF IDを直接指定
 
 // --- 1. 初期化 ＆ LIFFログイン ---
 window.addEventListener("DOMContentLoaded", function() {
