@@ -10,7 +10,7 @@
 </head>
 <body>
 
-  <!-- 1. 書籍登録画面(LF1) + スキャナー統合 -->
+  <!-- 書籍登録画面(LF1) -->
   <div id="screen-lf1">
     <h1>書籍登録</h1>
 
@@ -48,7 +48,7 @@
 
     <!-- スキャン結果一覧 -->
     <div class="card">
-      <label class="label-title">読み込み冊数 / <span id="scanCount">0</span>冊</label>
+      <label class="label-title">読み込み冊数 ： <span id="scanCount">0</span>冊</label>
       <ul id="isbnList" class="isbn-list"></ul>
     </div>
 
@@ -58,7 +58,7 @@
     </div>
   </div>
 
-  <!-- 2. 登録結果画面(LF2) -->
+  <!-- 登録結果画面(LF2) -->
   <div id="screen-lf2" style="display: none;">
     <div class="card">
       <label class="label-title">登録書籍一覧</label>
@@ -71,7 +71,7 @@
     </div>
   </div>
 
-  <!-- 3 蔵書データ修正画面(LF3) (単行本) -->
+  <!-- 蔵書データ修正画面(LF3) (単行本) -->
   <div id="screen-lf3" style="display: none;">
     <h1>蔵書データ修正</h1>
     
@@ -112,7 +112,7 @@
     </div>
   </div>
     
-  <!-- 4. ダイアログ -->
+  <!-- ダイアログ -->
   <div id="modalOverlay" class="modal-overlay" style="display: none;">
     <div class="modal-content">
       <p id="modalMessage" class="modal-text"></p>
@@ -122,7 +122,7 @@
     </div>
   </div>
 
-  <!-- 5. 登録中の画面操作ロック用オーバーレイ -->
+  <!-- 登録中の画面操作ロック用オーバーレイ -->
   <div id="loadingOverlay" class="loading-overlay" style="display: none;"></div>
   
   <script src="app.js"></script>
