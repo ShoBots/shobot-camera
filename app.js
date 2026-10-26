@@ -4,6 +4,7 @@ let lastScannedTime = 0;
 let userLineId = "";
 let isModalOpen = false;
 let pendingBooksData = null;
+let currentDuplicates = [];
 
 let currentEditingUserBookId = null;
 let previousScreenId = 'screen-lf2';
@@ -164,8 +165,8 @@ function renderLf1List() {
 }
 
 // GASバックエンド通信 (登録処理)
-function submitScanList(forceRegister = false) {
-  if (scannedIsbns.size === 0) return;
+function submitScanList(forceRegister = false, customBooksData = null) {
+  if (!customBooksData && scannedIsbns.size === 0) return;
 
   if (!userLineId) {
     showModal("LINEユーザー情報の取得に失敗しました。\n一度画面を閉じて、LINEのトーク画面から開き直してください。");
@@ -181,10 +182,10 @@ function submitScanList(forceRegister = false) {
     submitBtn.textContent = "登録中...";
   }
 
-  // ★ 画面のドロップダウンから選択中のステータスを取得して一括指定
+  // 画面のドロップダウンから選択中のステータスを取得して一括指定
   const currentBulkStatus = document.getElementById("bulkStatus").value;
 
-  const booksData = pendingBooksData || Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
+  const booksData = customBooksData || Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
     return {
       isbn: isbn,
       category: category || '未設定',
@@ -216,6 +217,7 @@ function submitScanList(forceRegister = false) {
       }
 
       pendingBooksData = booksData;
+      currentDuplicates = response.duplicates || [];
       showDuplicateConfirmModal(response.duplicates);
     } else {
       onRegisterFailure(new Error(response.message || "登録エラー"));
@@ -352,15 +354,15 @@ function showDuplicateConfirmModal(duplicates) {
     const cancelBtn = document.createElement("button");
     cancelBtn.id = "btnModalCancel";
     cancelBtn.className = "btn-secondary";
-    cancelBtn.innerText = "キャンセル";
-    cancelBtn.onclick = closeModal;
+    cancelBtn.innerText = "重複を除いて登録";
+    cancelBtn.onclick = onExcludeDuplicatesAndRegister;
     buttonsContainer.insertBefore(cancelBtn, buttonsContainer.firstChild);
   }
 
   const confirmBtn = buttonsContainer.querySelector(".modal-btn, .btn-submit");
   if (confirmBtn) {
     confirmBtn.className = "btn-submit";
-    confirmBtn.innerText = "登録";
+    confirmBtn.innerText = "すべて登録";
     confirmBtn.onclick = onConfirmDuplicate;
   }
 
@@ -370,6 +372,25 @@ function showDuplicateConfirmModal(duplicates) {
 function onConfirmDuplicate() {
   closeModal();
   submitScanList(true);
+}
+
+// 重複本を除外して残りの本を送信する関数
+function onExcludeDuplicatesAndRegister() {
+  closeModal();
+  if (!pendingBooksData || currentDuplicates.length === 0) return;
+
+  const duplicateIsbns = new Set(currentDuplicates.map(d => d.isbn));
+  const filteredBooks = pendingBooksData.filter(b => !duplicateIsbns.has(b.isbn));
+
+  if (filteredBooks.length === 0) {
+    showModal("すべての本が既に登録されていたため、登録をキャンセルしました。");
+    pendingBooksData = null;
+    currentDuplicates = [];
+    return;
+  }
+
+  pendingBooksData = filteredBooks;
+  submitScanList(false, filteredBooks);
 }
 
 function closeModal() {
