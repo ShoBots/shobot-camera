@@ -138,6 +138,11 @@ function renderLf1List() {
   const listEl = document.getElementById("isbnList");
   const submitBtn = document.getElementById("btnSubmitLf1");
 
+  const scanCountEl = document.getElementById("scanCount");
+  if (scanCountEl) {
+    scanCountEl.textContent = scannedIsbns.size;
+  }
+
   if (!listEl) return;
   listEl.innerHTML = "";
 
