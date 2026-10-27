@@ -21,8 +21,30 @@ window.addEventListener("DOMContentLoaded", function() {
   const type = urlParams.get('type');
   const targetId = urlParams.get('id');
 
-  // 編集モード以外（通常の書籍登録時）のみカメラを初期化
-  if (action !== 'edit') {
+// 初期化 ＆ LIFFログイン
+window.addEventListener("DOMContentLoaded", function() {
+  // 最初に全画面を非表示にしてチラつきを物理的に防ぐ
+  switchScreen(null);
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const action = urlParams.get('action');
+  const type = urlParams.get('type');
+  const targetId = urlParams.get('id');
+
+  // 編集モードの場合、カメラ起動を通さず、編集画面へ直接移動
+  if (action === 'edit' && targetId) {
+    initLiff(() => {
+      if (type === 'series') {
+        openSeriesEdit(targetId);
+      } else {
+        openSingleEdit(targetId, null);
+      }
+    });
+  } 
+  // 通常の書籍登録モードの場合、登録画面を表示してカメラを起動
+  else {
+    switchScreen('screen-lf1');
+
     Quagga.init({
       inputStream: {
         name: "Live",
@@ -34,39 +56,35 @@ window.addEventListener("DOMContentLoaded", function() {
     }, function(err) {
       if (!err) Quagga.start();
     });
-  }
 
-  if (typeof liff !== 'undefined') {
-    liff.init({ liffId: LIFF_ID })
-      .then(() => {
-        if (!liff.isLoggedIn()) {
-          liff.login();
-        } else {
-          return liff.getProfile();
-        }
-      })
-      .then(profile => {
-        if (profile && profile.userId) {
-          userLineId = profile.userId;
-          console.log("LINEユーザーID取得成功:", userLineId);
-
-          // URLパラメータによる初期画面切り替え
-          if (action === 'edit' && targetId) {
-            if (type === 'series') {
-              openSeriesEdit(targetId);
-            } else {
-              // LINEからの直接遷移時は戻り先を null に設定
-              openSingleEdit(targetId, null);
-            }
-          }
-        }
-      })
-      .catch(err => {
-        console.error("LIFF初期化エラー:", err);
-        showModal("LINEログイン情報の取得に失敗しました。\n画面を開き直してください。");
-      });
+    initLiff();
   }
 });
+
+// LIFF初期化
+function initLiff(onSuccess = null) {
+  if (typeof liff === 'undefined') return;
+
+  liff.init({ liffId: LIFF_ID })
+    .then(() => {
+      if (!liff.isLoggedIn()) {
+        liff.login();
+      } else {
+        return liff.getProfile();
+      }
+    })
+    .then(profile => {
+      if (profile && profile.userId) {
+        userLineId = profile.userId;
+        console.log("LINEユーザーID取得成功:", userLineId);
+        if (onSuccess) onSuccess();
+      }
+    })
+    .catch(err => {
+      console.error("LIFF初期化エラー:", err);
+      showModal("LINEログイン情報の取得に失敗しました。\n画面を開き直してください。");
+    });
+}
 
 // バーコード自動検知 (Quagga)
 Quagga.onDetected(function(result) {
@@ -314,9 +332,17 @@ let onModalCloseCallback = null;
 
 function showModal(text, onClose = null) {
   isModalOpen = true;
-  onModalCloseCallback = onClose; // ダイアログを閉じた後の後処理を登録
+  onModalCloseCallback = onClose;
   document.getElementById("modalMessage").innerText = text;
-  
+
+  // ボタン状態を標準（「閉じる」ボタン1個）にリセット
+  resetModalButtons();
+
+  document.getElementById("modalOverlay").style.display = "flex";
+}
+
+// モーダルのボタン状態を初期化する共通処理
+function resetModalButtons() {
   const buttonsContainer = document.getElementById("modalButtons");
   const extraBtn = document.getElementById("btnModalCancel");
   if (extraBtn) extraBtn.remove();
@@ -327,7 +353,6 @@ function showModal(text, onClose = null) {
     mainBtn.innerText = "閉じる";
     mainBtn.onclick = closeModal;
   }
-  document.getElementById("modalOverlay").style.display = "flex";
 }
 
 function showDuplicateConfirmModal(duplicates) {
@@ -385,22 +410,11 @@ function onExcludeDuplicatesAndRegister() {
 
 function closeModal() {
   document.getElementById("modalOverlay").style.display = "none";
-  
-  const extraBtn = document.getElementById("btnModalCancel");
-  if (extraBtn) extraBtn.remove();
-
-  const buttonsContainer = document.getElementById("modalButtons");
-  const mainBtn = buttonsContainer.querySelector("button");
-  if (mainBtn) {
-    mainBtn.className = "modal-btn";
-    mainBtn.innerText = "閉じる";
-    mainBtn.onclick = closeModal;
-  }
+  resetModalButtons();
 
   setTimeout(() => {
     isModalOpen = false;
     lastScannedTime = Date.now();
-    // モーダルが閉じられた後に登録されたコールバックを実行
     if (typeof onModalCloseCallback === 'function') {
       const cb = onModalCloseCallback;
       onModalCloseCallback = null;
