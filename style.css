@@ -230,3 +230,55 @@ button {
   justify-content: center;
   align-items: center;
 }
+
+/* シリーズアコーディオン UI */
+.accordion-group {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #eee;
+  overflow: hidden;
+}
+.accordion-header {
+  padding: 12px 14px;
+  font-weight: bold;
+  font-size: 0.95rem;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  outline: none;
+  color: #333;
+}
+.accordion-content {
+  padding: 10px 14px;
+  border-top: 1px solid #eee;
+}
+.series-book-item {
+  border-bottom: 1px dashed #ddd;
+  padding: 10px 0;
+}
+.series-book-item:last-child {
+  border-bottom: none;
+}
+.series-book-title {
+  font-weight: bold;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  color: #555;
+}
+.series-book-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.series-book-row .select-category {
+  flex: 1;
+}
+.input-vol {
+  width: 70px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  text-align: center;
+}
