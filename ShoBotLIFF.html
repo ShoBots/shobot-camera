@@ -97,9 +97,9 @@
       <div style="margin-top: 12px;">
         <label class="label-title">ステータス</label>
         <select id="singleEditStatus" class="select-category">
-          <option value="未読">未読</option>
-          <option value="既読">既読</option>
           <option value="読了">読了</option>
+          <option value="未読">未読</option>
+          <option value="読み途中">読み途中</option>
         </select>
       </div>
     </div>
@@ -109,6 +109,51 @@
       <button class="btn-submit" onclick="saveSingleEdit()">変更内容を保存する</button>
       <button class="btn-secondary" onclick="cancelSingleEdit()">変更せずに戻る</button>
       <button class="btn-delete btn-danger-full" onclick="deleteSingleBook()">この本を削除する</button>
+    </div>
+  </div>
+
+  <!-- 蔵書データ修正画面(LF3) (シリーズ) -->
+  <div id="screen-lf4" style="display: none;">
+    <h1>蔵書データ修正</h1>
+
+    <!-- シリーズ基本情報 (表示のみ) -->
+    <div class="card">
+      <div id="seriesEditTitle" class="result-title">シリーズタイトル</div>
+      <div class="result-cat" style="margin-top: 4px;">
+        <span id="seriesEditAuthor">著者名</span> / <span id="seriesEditLabel">出版レーベル</span>
+      </div>
+    </div>
+
+    <!-- 一括変更フォーム -->
+    <div class="card">
+      <div style="margin-bottom: 8px;">
+        <label class="label-title">書籍区分 (一括変更)</label>
+        <select id="seriesBulkCategory" class="select-category" onchange="applySeriesBulkCategory()">
+          <option value="未選択">区分を選択</option>
+          <option value="漫画">漫画</option>
+          <option value="小説">小説</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div>
+        <label class="label-title">ステータス (一括変更)</label>
+        <select id="seriesBulkStatus" class="select-category" onchange="applySeriesBulkStatus()">
+          <option value="未選択">ステータスを選択</option>
+          <option value="読了">読了</option>
+          <option value="未読">未読</option>
+          <option value="読み途中">読み途中</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- アコーディオン形式の巻数リスト -->
+    <div id="seriesAccordionContainer"></div>
+
+    <!-- 下部固定アクションボタン -->
+    <div class="footer-bar">
+      <button class="btn-submit" onclick="saveSeriesEdit()">変更内容を保存する</button>
+      <button class="btn-secondary" onclick="cancelSeriesEdit()">変更せずに戻る</button>
+      <button class="btn-delete btn-danger-full" onclick="deleteSeriesAll()">このシリーズの本を全て削除する</button>
     </div>
   </div>
     
