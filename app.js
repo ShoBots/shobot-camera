@@ -21,16 +21,8 @@ window.addEventListener("DOMContentLoaded", function() {
   const type = urlParams.get('type');
   const targetId = urlParams.get('id');
 
-  const isEditMode = (action === 'edit' && targetId);
-
-  // 画面の初期表示制御
-  if (isEditMode) {
-    // 編集モードなら登録画面は出さず、一旦読み込み待ち状態（全非表示）にする
-    switchScreen(null);
-  } else {
-    // 通常の登録モードなら登録画面を表示し、カメラを起動する
-    switchScreen('screen-lf1');
-
+  // 1. 編集モード（action === 'edit'）の時だけはカメラの初期化（Quagga.init）をスキップする
+  if (action !== 'edit') {
     Quagga.init({
       inputStream: {
         name: "Live",
@@ -44,7 +36,7 @@ window.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // LIFFログイン処理
+  // 2. LIFFログイン処理（画面表示は自然な流れに任せる）
   if (typeof liff !== 'undefined') {
     liff.init({ liffId: LIFF_ID })
       .then(() => {
@@ -59,11 +51,12 @@ window.addEventListener("DOMContentLoaded", function() {
           userLineId = profile.userId;
           console.log("LINEユーザーID取得成功:", userLineId);
 
-          // 編集モードの場合のみ、プロファイル取得後に各編集画面を開く
-          if (isEditMode) {
+          // URLパラメータがある場合は指定の編集画面を開く
+          if (action === 'edit' && targetId) {
             if (type === 'series') {
               openSeriesEdit(targetId);
             } else {
+              // LINEからの直接遷移時は戻り先を null に設定
               openSingleEdit(targetId, null);
             }
           }
@@ -71,8 +64,6 @@ window.addEventListener("DOMContentLoaded", function() {
       })
       .catch(err => {
         console.error("LIFF初期化エラー:", err);
-        // エラー時でも画面が消えたままにならないよう登録画面を出す
-        if (!isEditMode) switchScreen('screen-lf1');
         showModal("LINEログイン情報の取得に失敗しました。\n画面を開き直してください。");
       });
   }
