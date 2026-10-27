@@ -508,9 +508,9 @@ function renderSeriesAccordion() {
         </div>
         <div class="series-book-row">
           <select class="select-category" onchange="updateSeriesItem(${realIndex}, 'status', this.value)">
-            <option value="未読" ${book.status === '未読' ? 'selected' : ''}>未読</option>
-            <option value="既読" ${book.status === '既読' ? 'selected' : ''}>既読</option>
             <option value="読了" ${book.status === '読了' ? 'selected' : ''}>読了</option>
+            <option value="未読" ${book.status === '未読' ? 'selected' : ''}>未読</option>
+            <option value="読み途中" ${book.status === '読み途中' ? 'selected' : ''}>読み途中</option>
           </select>
           <button type="button" class="btn-delete" style="width:70px;" onclick="removeSeriesItem(${realIndex})">削除</button>
         </div>
