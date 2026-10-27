@@ -14,19 +14,27 @@ let previousSingleScreenId = 'screen-lf2';
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
 const LIFF_ID = "2012030246-XEKrF6wY";
 
-// --- 1. 初期化 ＆ LIFFログイン ---
+// 初期化 ＆ LIFFログイン
 window.addEventListener("DOMContentLoaded", function() {
-  Quagga.init({
-    inputStream: {
-      name: "Live",
-      type: "LiveStream",
-      target: document.querySelector('#interactive'),
-      constraints: { facingMode: "environment" }
-    },
-    decoder: { readers: ["ean_reader"] }
-  }, function(err) {
-    if (!err) Quagga.start();
-  });
+  const urlParams = new URLSearchParams(window.location.search);
+  const action = urlParams.get('action');
+  const type = urlParams.get('type');
+  const targetId = urlParams.get('id');
+
+  // 編集モード以外（通常の書籍登録時）のみカメラを初期化
+  if (action !== 'edit') {
+    Quagga.init({
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: document.querySelector('#interactive'),
+        constraints: { facingMode: "environment" }
+      },
+      decoder: { readers: ["ean_reader"] }
+    }, function(err) {
+      if (!err) Quagga.start();
+    });
+  }
 
   if (typeof liff !== 'undefined') {
     liff.init({ liffId: LIFF_ID })
@@ -43,16 +51,12 @@ window.addEventListener("DOMContentLoaded", function() {
           console.log("LINEユーザーID取得成功:", userLineId);
 
           // URLパラメータによる初期画面切り替え
-          const urlParams = new URLSearchParams(window.location.search);
-          const action = urlParams.get('action');
-          const type = urlParams.get('type');
-          const targetId = urlParams.get('id');
-
           if (action === 'edit' && targetId) {
             if (type === 'series') {
               openSeriesEdit(targetId);
             } else {
-              openSingleEdit(targetId, 'screen-lf1');
+              // LINEからの直接遷移時は戻り先を null に設定
+              openSingleEdit(targetId, null);
             }
           }
         }
@@ -306,8 +310,11 @@ function closeLiff() {
   }
 }
 
-function showModal(text) {
+let onModalCloseCallback = null;
+
+function showModal(text, onClose = null) {
   isModalOpen = true;
+  onModalCloseCallback = onClose; // ダイアログを閉じた後の後処理を登録
   document.getElementById("modalMessage").innerText = text;
   
   const buttonsContainer = document.getElementById("modalButtons");
@@ -320,7 +327,6 @@ function showModal(text) {
     mainBtn.innerText = "閉じる";
     mainBtn.onclick = closeModal;
   }
-
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
@@ -394,7 +400,13 @@ function closeModal() {
   setTimeout(() => {
     isModalOpen = false;
     lastScannedTime = Date.now();
-  }, 500);
+    // モーダルが閉じられた後に登録されたコールバックを実行
+    if (typeof onModalCloseCallback === 'function') {
+      const cb = onModalCloseCallback;
+      onModalCloseCallback = null;
+      cb();
+    }
+  }, 300);
 }
 
 function updateLf2ListCategoryLocal(userBookId, newCategory) {
@@ -418,7 +430,7 @@ function removeLf2ListItemLocal(userBookId) {
 
 // 蔵書データ修正 (LF3)
 // 個別本 編集画面の読み込み
-function openSingleEdit(userBookId, fromScreenId = 'screen-lf2') {
+function openSingleEdit(userBookId, fromScreenId = null) {
   currentEditingSingleId = userBookId;
   previousSingleScreenId = fromScreenId;
 
@@ -536,7 +548,6 @@ function applySeriesBulkStatus() {
   renderSeriesAccordion();
 }
 
-// データ保存 (Save)
 // 個別本 変更保存
 function saveSingleEdit() {
   if (!currentEditingSingleId) return;
@@ -552,9 +563,11 @@ function saveSingleEdit() {
   };
 
   executeApiCall('updateSingleBook', payload, () => {
-    showModal("変更を保存しました");
     updateLf2ListCategoryLocal(currentEditingSingleId, category);
-    closeSingleEdit();
+    // モーダルの「閉じる」を押した後に closeSingleEdit() を実行
+    showModal("変更を保存しました", () => {
+      closeSingleEdit();
+    });
   });
 }
 
@@ -569,21 +582,24 @@ function saveSeriesEdit() {
   };
 
   executeApiCall('updateSeriesBooks', payload, () => {
-    showModal("シリーズ情報を保存しました");
-    closeLiff();
+    // モーダルの「閉じる」を押した後に closeLiff() を実行
+    showModal("シリーズ情報を保存しました", () => {
+      closeLiff();
+    });
   });
 }
 
-// データ削除 (Delete)
 // 個別本 削除
 function deleteSingleBook() {
   if (!currentEditingSingleId) return;
   if (!confirm("この本を蔵書から削除してもよろしいですか？")) return;
 
   executeApiCall('deleteSingleBook', { userBookId: currentEditingSingleId }, () => {
-    showModal("削除しました");
     removeLf2ListItemLocal(currentEditingSingleId);
-    closeSingleEdit();
+    // モーダルの「閉じる」を押した後に closeSingleEdit() を実行
+    showModal("削除しました", () => {
+      closeSingleEdit();
+    });
   });
 }
 
@@ -593,15 +609,23 @@ function deleteSeriesAll() {
   if (!confirm("このシリーズの本をすべて削除してもよろしいですか？")) return;
 
   executeApiCall('deleteSeriesAll', { seriesId: currentEditingSeriesId }, () => {
-    showModal("シリーズを全件削除しました");
-    closeLiff();
+    // モーダルの「閉じる」を押した後に closeLiff() を実行
+    showModal("シリーズを全件削除しました", () => {
+      closeLiff();
+    });
   });
 }
 
 // キャンセル & 共通ヘルパー (Close / Helper)
 function closeSingleEdit() {
   currentEditingSingleId = null;
-  switchScreen(previousSingleScreenId);
+  if (previousSingleScreenId) {
+    // 登録完了画面（LF2）から遷移してきた場合のみその画面に戻る
+    switchScreen(previousSingleScreenId);
+  } else {
+    // LINE等から直接開いた場合は画面を閉じる
+    closeLiff();
+  }
 }
 
 function closeSeriesEdit() {
