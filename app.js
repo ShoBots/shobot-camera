@@ -21,28 +21,14 @@ window.addEventListener("DOMContentLoaded", function() {
   const type = urlParams.get('type');
   const targetId = urlParams.get('id');
 
-// 初期化 ＆ LIFFログイン
-window.addEventListener("DOMContentLoaded", function() {
-  // 最初に全画面を非表示にしてチラつきを物理的に防ぐ
-  switchScreen(null);
+  const isEditMode = (action === 'edit' && targetId);
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const action = urlParams.get('action');
-  const type = urlParams.get('type');
-  const targetId = urlParams.get('id');
-
-  // 編集モードの場合、カメラ起動を通さず、編集画面へ直接移動
-  if (action === 'edit' && targetId) {
-    initLiff(() => {
-      if (type === 'series') {
-        openSeriesEdit(targetId);
-      } else {
-        openSingleEdit(targetId, null);
-      }
-    });
-  } 
-  // 通常の書籍登録モードの場合、登録画面を表示してカメラを起動
-  else {
+  // 画面の初期表示制御
+  if (isEditMode) {
+    // 編集モードなら登録画面は出さず、一旦読み込み待ち状態（全非表示）にする
+    switchScreen(null);
+  } else {
+    // 通常の登録モードなら登録画面を表示し、カメラを起動する
     switchScreen('screen-lf1');
 
     Quagga.init({
@@ -56,35 +42,41 @@ window.addEventListener("DOMContentLoaded", function() {
     }, function(err) {
       if (!err) Quagga.start();
     });
+  }
 
-    initLiff();
+  // LIFFログイン処理
+  if (typeof liff !== 'undefined') {
+    liff.init({ liffId: LIFF_ID })
+      .then(() => {
+        if (!liff.isLoggedIn()) {
+          liff.login();
+        } else {
+          return liff.getProfile();
+        }
+      })
+      .then(profile => {
+        if (profile && profile.userId) {
+          userLineId = profile.userId;
+          console.log("LINEユーザーID取得成功:", userLineId);
+
+          // 編集モードの場合のみ、プロファイル取得後に各編集画面を開く
+          if (isEditMode) {
+            if (type === 'series') {
+              openSeriesEdit(targetId);
+            } else {
+              openSingleEdit(targetId, null);
+            }
+          }
+        }
+      })
+      .catch(err => {
+        console.error("LIFF初期化エラー:", err);
+        // エラー時でも画面が消えたままにならないよう登録画面を出す
+        if (!isEditMode) switchScreen('screen-lf1');
+        showModal("LINEログイン情報の取得に失敗しました。\n画面を開き直してください。");
+      });
   }
 });
-
-// LIFF初期化
-function initLiff(onSuccess = null) {
-  if (typeof liff === 'undefined') return;
-
-  liff.init({ liffId: LIFF_ID })
-    .then(() => {
-      if (!liff.isLoggedIn()) {
-        liff.login();
-      } else {
-        return liff.getProfile();
-      }
-    })
-    .then(profile => {
-      if (profile && profile.userId) {
-        userLineId = profile.userId;
-        console.log("LINEユーザーID取得成功:", userLineId);
-        if (onSuccess) onSuccess();
-      }
-    })
-    .catch(err => {
-      console.error("LIFF初期化エラー:", err);
-      showModal("LINEログイン情報の取得に失敗しました。\n画面を開き直してください。");
-    });
-}
 
 // バーコード自動検知 (Quagga)
 Quagga.onDetected(function(result) {
