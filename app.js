@@ -636,6 +636,15 @@ function switchScreen(activeScreenId) {
     const el = document.getElementById(id);
     if (el) el.style.display = (id === activeScreenId) ? 'block' : 'none';
   });
+
+  // スキャン画面(LF1)以外へ移動した場合はカメラを一時停止し、LF1に戻ったら再開する
+  if (typeof Quagga !== 'undefined') {
+    if (activeScreenId === 'screen-lf1') {
+      try { Quagga.start(); } catch(e) {}
+    } else {
+      try { Quagga.stop(); } catch(e) {}
+    }
+  }
 }
 
 // 通信処理共通ヘルパー
