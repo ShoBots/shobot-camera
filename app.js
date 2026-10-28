@@ -244,7 +244,13 @@ function submitScanList(forceRegister = false, customBooksData = null) {
 
       pendingBooksData = booksData;
       currentDuplicates = response.duplicates || [];
-      showDuplicateConfirmModal(response.duplicates);
+      const titles = response.duplicates.map(d => `・${d.title}`).join("\n");
+      showConfirmModal(
+        `以下の書籍は既に登録されています。\n重複して登録しますか？\n\n${titles}`,
+        "重複を除いて登録",
+        "すべて登録",
+        onConfirmDuplicate
+      );
     } else {
       onRegisterFailure(new Error(response.message || "登録エラー"));
     }
@@ -271,7 +277,7 @@ function onRegisterSuccess(response) {
         <span class="result-title">${item.title}</span>
         <span class="result-cat">区分: ${item.category}</span>
       </div>
-      <button class="btn-edit-sm" onclick="openLf3Edit(${item.userBookId}, 'screen-lf2')">修正</button>
+      <button class="btn-edit-sm" onclick="openSingleEdit(${item.userBookId}, 'screen-lf2')">修正</button>
     `;
     resultListEl.appendChild(li);
   });
@@ -338,57 +344,41 @@ function resetModalButtons() {
   }
 }
 
-function showDuplicateConfirmModal(duplicates) {
+// 確認用汎用モーダル（重複確認・削除確認などで使い回し）
+function showConfirmModal(msg, cancelText, confirmText, onConfirm) {
   isModalOpen = true;
-  
-  const titles = duplicates.map(d => `・${d.title}`).join("\n");
-  const msg = `以下の書籍は既に登録されています。\n重複して登録しますか？\n\n${titles}`;
-  
   document.getElementById("modalMessage").innerText = msg;
 
   const buttonsContainer = document.getElementById("modalButtons");
-  
+
   if (!document.getElementById("btnModalCancel")) {
     const cancelBtn = document.createElement("button");
     cancelBtn.id = "btnModalCancel";
     cancelBtn.className = "btn-secondary";
-    cancelBtn.innerText = "重複を除いて登録";
-    cancelBtn.onclick = onExcludeDuplicatesAndRegister;
     buttonsContainer.insertBefore(cancelBtn, buttonsContainer.firstChild);
   }
 
-  const confirmBtn = buttonsContainer.querySelector(".modal-btn, .btn-submit");
+  const cancelBtn = document.getElementById("btnModalCancel");
+  cancelBtn.innerText = cancelText;
+  cancelBtn.onclick = closeModal;
+
+  const allButtons = buttonsContainer.querySelectorAll("button");
+  const confirmBtn = allButtons.length > 1 ? allButtons[1] : allButtons[0];
+
   if (confirmBtn) {
     confirmBtn.className = "btn-submit";
-    confirmBtn.innerText = "すべて登録";
-    confirmBtn.onclick = onConfirmDuplicate;
+    confirmBtn.innerText = confirmText;
+    confirmBtn.onclick = () => {
+      closeModal();
+      onConfirm();
+    };
   }
-
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
 function onConfirmDuplicate() {
   closeModal();
   submitScanList(true);
-}
-
-// 重複本を除外して残りの本を送信する関数
-function onExcludeDuplicatesAndRegister() {
-  closeModal();
-  if (!pendingBooksData || currentDuplicates.length === 0) return;
-
-  const duplicateIsbns = new Set(currentDuplicates.map(d => d.isbn));
-  const filteredBooks = pendingBooksData.filter(b => !duplicateIsbns.has(b.isbn));
-
-  if (filteredBooks.length === 0) {
-    showModal("すべての本が既に登録されていたため、登録をキャンセルしました。");
-    pendingBooksData = null;
-    currentDuplicates = [];
-    return;
-  }
-
-  pendingBooksData = filteredBooks;
-  submitScanList(false, filteredBooks);
 }
 
 function closeModal() {
@@ -589,13 +579,11 @@ function saveSeriesEdit() {
 // 個別本 削除
 function deleteSingleBook() {
   if (!currentEditingSingleId) return;
-  if (!confirm("この本を蔵書から削除してもよろしいですか？")) return;
 
-  executeApiCall('deleteSingleBook', { userBookId: currentEditingSingleId }, () => {
-    removeLf2ListItemLocal(currentEditingSingleId);
-    // モーダルの「閉じる」を押した後に closeSingleEdit() を実行
-    showModal("削除しました", () => {
-      closeSingleEdit();
+  showConfirmModal("この本を蔵書から削除してもよろしいですか？", "キャンセル", "削除する", () => {
+    executeApiCall('deleteSingleBook', { userBookId: currentEditingSingleId }, () => {
+      removeLf2ListItemLocal(currentEditingSingleId);
+      showModal("削除しました", () => closeSingleEdit());
     });
   });
 }
@@ -603,12 +591,10 @@ function deleteSingleBook() {
 // シリーズ 全削除
 function deleteSeriesAll() {
   if (!currentEditingSeriesId) return;
-  if (!confirm("このシリーズの本をすべて削除してもよろしいですか？")) return;
 
-  executeApiCall('deleteSeriesAll', { seriesId: currentEditingSeriesId }, () => {
-    // モーダルの「閉じる」を押した後に closeLiff() を実行
-    showModal("シリーズを全件削除しました", () => {
-      closeLiff();
+  showConfirmModal("このシリーズの本をすべて削除してもよろしいですか？", "キャンセル", "削除する", () => {
+    executeApiCall('deleteSeriesAll', { seriesId: currentEditingSeriesId }, () => {
+      showModal("シリーズを全件削除しました", () => closeLiff());
     });
   });
 }
