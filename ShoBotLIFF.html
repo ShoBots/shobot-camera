@@ -74,18 +74,43 @@
   <!-- 蔵書データ修正画面(LF3) (単行本) -->
   <div id="screen-lf3" style="display: none;">
     <h1>蔵書データ修正</h1>
-    
-    <!-- 書籍基本情報 (表示のみ) -->
-    <div class="card">
-      <div id="singleEditTitle" class="result-title">書籍タイトル</div>
-      <div class="result-cat" style="margin-top: 4px;">
-        <span id="singleEditAuthor">著者名</span> / <span id="singleEditLabel">出版レーベル</span>
-      </div>
-    </div>
 
-    <!-- 編集フォーム -->
     <div class="card">
-      <div>
+      <div class="form-group">
+        <label class="label-title">書籍タイトル</label>
+        <input type="text" id="singleEditTitleInput" class="input-text" placeholder="タイトルを入力" />
+      </div>
+
+      <div class="form-group">
+        <label class="label-title">巻数</label>
+        <input type="number" id="singleEditVolumeInput" class="input-text" placeholder="数字のみ" />
+      </div>
+
+      <div class="form-group">
+        <label class="label-title">シリーズ名</label>
+        <select id="singleEditSeriesSelect" class="select-category" onchange="toggleCustomInput('singleEditSeriesSelect', 'singleEditSeriesCustomContainer')"></select>
+        <div id="singleEditSeriesCustomContainer" style="display: none;">
+          <input type="text" id="singleEditSeriesCustomInput" class="input-text mt-2" placeholder="新しいシリーズ名を入力" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="label-title">著者名</label>
+        <select id="singleEditAuthorSelect" class="select-category" onchange="toggleCustomInput('singleEditAuthorSelect', 'singleEditAuthorCustomContainer')"></select>
+        <div id="singleEditAuthorCustomContainer" style="display: none;">
+          <input type="text" id="singleEditAuthorCustomInput" class="input-text mt-2" placeholder="新しい著者名を入力" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="label-title">出版レーベル</label>
+        <select id="singleEditLabelSelect" class="select-category" onchange="toggleCustomInput('singleEditLabelSelect', 'singleEditLabelCustomContainer')"></select>
+        <div id="singleEditLabelCustomContainer" style="display: none;">
+          <input type="text" id="singleEditLabelCustomInput" class="input-text mt-2" placeholder="新しい出版レーベルを入力" />
+        </div>
+      </div>
+
+      <div class="form-group">
         <label class="label-title">書籍区分</label>
         <select id="singleEditCategory" class="select-category">
           <option value="漫画">漫画</option>
@@ -94,7 +119,7 @@
         </select>
       </div>
 
-      <div style="margin-top: 12px;">
+      <div class="form-group">
         <label class="label-title">ステータス</label>
         <select id="singleEditStatus" class="select-category">
           <option value="読了">読了</option>
@@ -104,7 +129,6 @@
       </div>
     </div>
 
-    <!-- 下部固定アクションボタン -->
     <div class="footer-bar">
       <button class="btn-submit" onclick="saveSingleEdit()">変更内容を保存する</button>
       <button class="btn-secondary" onclick="closeSingleEdit()">変更せずに戻る</button>
@@ -114,17 +138,19 @@
 
   <!-- 蔵書データ修正画面(LF3) (シリーズ) -->
   <div id="screen-lf4" style="display: none;">
-    <h1>蔵書データ修正</h1>
+    <h1>シリーズデータ修正</h1>
 
-    <!-- シリーズ基本情報 (表示のみ) -->
     <div class="card">
-      <div id="seriesEditTitle" class="result-title">シリーズタイトル</div>
-      <div class="result-cat" style="margin-top: 4px;">
+      <div class="form-group">
+        <label class="label-title">シリーズタイトル</label>
+        <input type="text" id="seriesEditTitleInput" class="input-text" placeholder="シリーズ名を入力" />
+      </div>
+      <div class="result-cat" style="margin-top: 6px;">
         <span id="seriesEditAuthor">著者名</span> / <span id="seriesEditLabel">出版レーベル</span>
       </div>
     </div>
 
-    <!-- 一括変更フォーム -->
+    <!-- 一括変更フォーム・アコーディオン（既存のまま） -->
     <div class="card">
       <div style="margin-bottom: 8px;">
         <label class="label-title">書籍区分 (一括変更)</label>
@@ -146,30 +172,11 @@
       </div>
     </div>
 
-    <!-- アコーディオン形式の巻数リスト -->
     <div id="seriesAccordionContainer"></div>
 
-    <!-- 下部固定アクションボタン -->
     <div class="footer-bar">
       <button class="btn-submit" onclick="saveSeriesEdit()">変更内容を保存する</button>
       <button class="btn-secondary" onclick="closeSeriesEdit()">変更せずに戻る</button>
       <button class="btn-delete" onclick="deleteSeriesAll()">このシリーズの本を全て削除する</button>
     </div>
   </div>
-    
-  <!-- ダイアログ -->
-  <div id="modalOverlay" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-      <p id="modalMessage" class="modal-text"></p>
-      <div id="modalButtons" class="modal-buttons">
-        <button class="modal-btn" onclick="closeModal()">閉じる</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 登録中の画面操作ロック用オーバーレイ -->
-  <div id="loadingOverlay" class="loading-overlay" style="display: none;"></div>
-  
-  <script src="app.js"></script>
-</body>
-</html>
