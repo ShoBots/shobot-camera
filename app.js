@@ -13,35 +13,6 @@ let previousSingleScreenId = 'screen-lf2';
 
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
 const LIFF_ID = "2012030246-XEKrF6wY";
-let isQuaggaInitialized = false;
-
-// カメラ初期化を安全に行う関数
-function initCamera() {
-  if (isQuaggaInitialized) {
-    try { Quagga.start(); } catch(e) {}
-    return;
-  }
-
-  const targetEl = document.querySelector('#interactive');
-  if (!targetEl) return;
-
-  Quagga.init({
-    inputStream: {
-      name: "Live",
-      type: "LiveStream",
-      target: targetEl,
-      constraints: { facingMode: "environment" }
-    },
-    decoder: { readers: ["ean_reader"] }
-  }, function(err) {
-    if (err) {
-      console.error("Quagga初期化エラー:", err);
-      return;
-    }
-    isQuaggaInitialized = true;
-    Quagga.start();
-  });
-}
 
 // 初期化 ＆ LIFFログイン
 window.addEventListener("DOMContentLoaded", function() {
@@ -50,6 +21,22 @@ window.addEventListener("DOMContentLoaded", function() {
   const type = urlParams.get('type');
   const targetId = urlParams.get('id');
 
+  // 1. 編集モード（action === 'edit'）の時だけはカメラの初期化（Quagga.init）をスキップする
+  if (action !== 'edit') {
+    Quagga.init({
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: document.querySelector('#interactive'),
+        constraints: { facingMode: "environment" }
+      },
+      decoder: { readers: ["ean_reader"] }
+    }, function(err) {
+      if (!err) Quagga.start();
+    });
+  }
+
+  // 2. LIFFログイン処理（画面表示は自然な流れに任せる）
   if (typeof liff !== 'undefined') {
     liff.init({ liffId: LIFF_ID })
       .then(() => {
@@ -62,19 +49,22 @@ window.addEventListener("DOMContentLoaded", function() {
       .then(profile => {
         if (profile && profile.userId) {
           userLineId = profile.userId;
+          console.log("LINEユーザーID取得成功:", userLineId);
 
+          // URLパラメータがある場合は指定の編集画面を開く
           if (action === 'edit' && targetId) {
-            if (type === 'series') openSeriesEdit(targetId);
-            else openSingleEdit(targetId, null);
-          } else {
-            // 通常スキャン画面を表示してカメラ起動
-            switchScreen('screen-lf1');
+            if (type === 'series') {
+              openSeriesEdit(targetId);
+            } else {
+              // LINEからの直接遷移時は戻り先を null に設定
+              openSingleEdit(targetId, null);
+            }
           }
         }
       })
       .catch(err => {
         console.error("LIFF初期化エラー:", err);
-        showModal("LINEログイン情報の取得に失敗しました。");
+        showModal("LINEログイン情報の取得に失敗しました。\n画面を開き直してください。");
       });
   }
 });
@@ -317,6 +307,8 @@ function goToLf1ForMore() {
   document.getElementById("screen-lf1").style.display = "block";
 }
 
+
+
 function closeLiff() {
   if (typeof liff !== 'undefined' && liff.closeWindow) {
     liff.closeWindow();
@@ -430,20 +422,10 @@ function openSingleEdit(userBookId, fromScreenId = null) {
   previousSingleScreenId = fromScreenId;
 
   executeApiCall('getBookDetail', { userBookId: userBookId }, (data) => {
-    document.getElementById('singleEditTitleInput').value = data.title || '';
-    document.getElementById('singleEditVolumeInput').value = (data.volumeNumber !== null && data.volumeNumber !== undefined) ? data.volumeNumber : '';
-
-    const master = data.masterData || {};
-    populateMasterSelect('singleEditSeriesSelect', master.series, data.seriesId, 'series_id', 'series_name', 'シリーズなし');
-    populateMasterSelect('singleEditAuthorSelect', master.authors, data.authorId, 'author_id', 'author_name', '著者未設定');
-    populateMasterSelect('singleEditLabelSelect', master.publishingLabels, data.publishingLabelId, 'publishing_label_id', 'publishing_label_name', 'レーベル未設定');
-
-    ['singleEditSeriesSelect', 'singleEditAuthorSelect', 'singleEditLabelSelect'].forEach(id => {
-      document.getElementById(id.replace('Select', 'CustomContainer')).style.display = 'none';
-      document.getElementById(id.replace('Select', 'CustomInput')).value = '';
-    });
-
-    document.getElementById('singleEditCategory').value = data.bookType || 'その他';
+    document.getElementById('singleEditTitle').textContent = data.title;
+    document.getElementById('singleEditAuthor').textContent = data.authorName || '未設定';
+    document.getElementById('singleEditLabel').textContent = data.publishingLabelName || '未設定';
+    document.getElementById('singleEditCategory').value = data.bookType || '未設定';
     document.getElementById('singleEditStatus').value = data.status || '未読';
 
     switchScreen('screen-lf3');
@@ -455,7 +437,7 @@ function openSeriesEdit(seriesId) {
   currentEditingSeriesId = seriesId;
 
   executeApiCall('getSeriesDetail', { seriesId: seriesId }, (data) => {
-    document.getElementById('seriesEditTitleInput').value = data.seriesName || '';
+    document.getElementById('seriesEditTitle').textContent = data.seriesName;
     document.getElementById('seriesEditAuthor').textContent = data.authorName || '未設定';
     document.getElementById('seriesEditLabel').textContent = data.publishingLabelName || '未設定';
 
@@ -502,16 +484,14 @@ function renderSeriesAccordion() {
       itemDiv.className = 'series-book-item';
       
       itemDiv.innerHTML = `
-        <div class="series-book-row" style="margin-bottom:6px;">
-          <input type="text" class="input-text" value="${book.title || ''}" placeholder="タイトル" onchange="updateSeriesItem(${realIndex}, 'title', this.value)" />
-        </div>
+        <div class="series-book-title">${book.volumeNumber ? book.volumeNumber + '巻' : '単巻'} (${book.title || ''})</div>
         <div class="series-book-row">
           <select class="select-category" onchange="updateSeriesItem(${realIndex}, 'bookType', this.value)">
             <option value="漫画" ${book.bookType === '漫画' ? 'selected' : ''}>漫画</option>
             <option value="小説" ${book.bookType === '小説' ? 'selected' : ''}>小説</option>
             <option value="その他" ${book.bookType === 'その他' ? 'selected' : ''}>その他</option>
           </select>
-          <input type="number" class="input-vol" value="${(book.volumeNumber !== null && book.volumeNumber !== undefined) ? book.volumeNumber : ''}" placeholder="巻数" onchange="updateSeriesItem(${realIndex}, 'volumeNumber', this.value)" />
+          <input type="number" class="input-vol" value="${book.volumeNumber || ''}" placeholder="巻数" onchange="updateSeriesItem(${realIndex}, 'volumeNumber', this.value)" />
         </div>
         <div class="series-book-row">
           <select class="select-category" onchange="updateSeriesItem(${realIndex}, 'status', this.value)">
@@ -559,37 +539,22 @@ function applySeriesBulkStatus() {
 function saveSingleEdit() {
   if (!currentEditingSingleId) return;
 
-  const title = document.getElementById('singleEditTitleInput').value;
-  const volVal = document.getElementById('singleEditVolumeInput').value;
-  const volumeNumber = (volVal !== "") ? parseInt(volVal, 10) : null;
-
-  const seriesSelect = document.getElementById('singleEditSeriesSelect').value;
-  const seriesVal = (seriesSelect === 'NEW') ? document.getElementById('singleEditSeriesCustomInput').value : seriesSelect;
-
-  const authorSelect = document.getElementById('singleEditAuthorSelect').value;
-  const authorVal = (authorSelect === 'NEW') ? document.getElementById('singleEditAuthorCustomInput').value : authorSelect;
-
-  const labelSelect = document.getElementById('singleEditLabelSelect').value;
-  const labelVal = (labelSelect === 'NEW') ? document.getElementById('singleEditLabelCustomInput').value : labelSelect;
-
   const category = document.getElementById('singleEditCategory').value;
   const status = document.getElementById('singleEditStatus').value;
 
   const payload = {
     action: "updateSingleBook",
     userBookId: currentEditingSingleId,
-    title: title,
-    volumeNumber: volumeNumber,
-    seriesVal: seriesVal,
-    authorVal: authorVal,
-    labelVal: labelVal,
     bookType: category,
     status: status
   };
 
   executeApiCall('updateSingleBook', payload, () => {
     updateLf2ListCategoryLocal(currentEditingSingleId, category);
-    showModal("変更を保存しました", () => closeSingleEdit());
+    // モーダルの「閉じる」を押した後に closeSingleEdit() を実行
+    showModal("変更を保存しました", () => {
+      closeSingleEdit();
+    });
   });
 }
 
@@ -597,17 +562,17 @@ function saveSingleEdit() {
 function saveSeriesEdit() {
   if (!currentEditingSeriesId) return;
 
-  const seriesName = document.getElementById('seriesEditTitleInput').value;
-
   const payload = {
     action: "updateSeriesBooks",
     seriesId: currentEditingSeriesId,
-    seriesName: seriesName,
     books: currentSeriesBooksData
   };
 
   executeApiCall('updateSeriesBooks', payload, () => {
-    showModal("シリーズ情報を保存しました", () => closeLiff());
+    // モーダルの「閉じる」を押した後に closeLiff() を実行
+    showModal("シリーズ情報を保存しました", () => {
+      closeLiff();
+    });
   });
 }
 
@@ -658,11 +623,11 @@ function switchScreen(activeScreenId) {
     if (el) el.style.display = (id === activeScreenId) ? 'block' : 'none';
   });
 
-  // LF1（スキャン画面）が表示された時だけカメラを起動・再開する
-  if (activeScreenId === 'screen-lf1') {
-    initCamera();
-  } else {
-    if (typeof Quagga !== 'undefined' && isQuaggaInitialized) {
+  // スキャン画面(LF1)以外へ移動した場合はカメラを一時停止し、LF1に戻ったら再開する
+  if (typeof Quagga !== 'undefined') {
+    if (activeScreenId === 'screen-lf1') {
+      try { Quagga.start(); } catch(e) {}
+    } else {
       try { Quagga.stop(); } catch(e) {}
     }
   }
@@ -694,46 +659,3 @@ function executeApiCall(actionName, payload, onSuccess) {
     showModal("通信エラーが発生しました:\n" + err.message);
   });
 }
-
-// ドロップダウン制御用のヘルパー関数
-function toggleCustomInput(selectId, containerId) {
-  const selectEl = document.getElementById(selectId);
-  const containerEl = document.getElementById(containerId);
-  if (selectEl && containerEl) {
-    containerEl.style.display = (selectEl.value === 'NEW') ? 'block' : 'none';
-  }
-}
-
-function populateMasterSelect(selectId, items, currentId, idKey, nameKey, defaultText) {
-  const selectEl = document.getElementById(selectId);
-  if (!selectEl) return;
-  selectEl.innerHTML = "";
-
-  const noneOpt = document.createElement("option");
-  noneOpt.value = "";
-  noneOpt.textContent = defaultText;
-  selectEl.appendChild(noneOpt);
-
-  const newOpt = document.createElement("option");
-  newOpt.value = "NEW";
-  newOpt.textContent = "＋ 新規入力して登録";
-  selectEl.appendChild(newOpt);
-
-  let hasSelected = false;
-  if (items && Array.isArray(items)) {
-    items.forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item[idKey];
-      opt.textContent = item[nameKey];
-      if (currentId && String(item[idKey]) === String(currentId)) {
-        opt.selected = true;
-        hasSelected = true;
-      }
-      selectEl.appendChild(opt);
-    });
-  }
-  if (!hasSelected) noneOpt.selected = true;
-}
-window.addEventListener('error', function(e) {
-  alert("エラー発生:\n" + e.message + "\n行: " + e.lineno);
-});
