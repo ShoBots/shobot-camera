@@ -75,10 +75,19 @@
   <div id="screen-lf3" style="display: none;">
     <h1>蔵書データ修正</h1>
     
-    <!-- 書籍基本情報 (表示のみ) -->
+    <!-- 書籍基本情報 ＆ 編集フォーム -->
     <div class="card">
-      <div id="singleEditTitle" class="result-title">書籍タイトル</div>
-      <div class="result-cat" style="margin-top: 4px;">
+      <div class="form-group">
+        <label class="label-title">書籍タイトル</label>
+        <input type="text" id="singleEditTitleInput" class="input-text" placeholder="タイトルを入力" />
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="label-title">巻数</label>
+        <input type="number" id="singleEditVolumeInput" class="input-text" placeholder="数字のみ（空欄可）" />
+      </div>
+
+      <div class="result-cat" style="margin-top: 10px;">
         <span id="singleEditAuthor">著者名</span> / <span id="singleEditLabel">出版レーベル</span>
       </div>
     </div>
