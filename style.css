@@ -279,3 +279,17 @@ button {
   font-size: 0.9rem;
   text-align: center;
 }
+
+.form-group { margin-bottom: 12px; }
+.mt-2 { margin-top: 6px; }
+.input-text {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+.input-text:focus { border-color: #aabb88; }
