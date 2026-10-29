@@ -426,10 +426,11 @@ function openSingleEdit(userBookId, fromScreenId = null) {
     const titleEl = document.getElementById('singleEditTitleInput');
     if (titleEl) titleEl.value = data.title || '';
 
-    // 巻数入力欄（NULL や undefined の場合は空文字）
+    // 巻数入力欄（null, undefined, 0 の場合は空欄にする）
     const volEl = document.getElementById('singleEditVolumeInput');
     if (volEl) {
-      volEl.value = (data.volumeNumber !== null && data.volumeNumber !== undefined) ? data.volumeNumber : '';
+      const hasVol = data.volumeNumber !== null && data.volumeNumber !== undefined && data.volumeNumber !== 0;
+      volEl.value = hasVol ? data.volumeNumber : '';
     }
 
     document.getElementById('singleEditAuthor').textContent = data.authorName || '未設定';
