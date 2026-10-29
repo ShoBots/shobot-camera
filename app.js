@@ -13,6 +13,35 @@ let previousSingleScreenId = 'screen-lf2';
 
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
 const LIFF_ID = "2012030246-XEKrF6wY";
+let isQuaggaInitialized = false;
+
+// カメラ初期化を安全に行う関数
+function initCamera() {
+  if (isQuaggaInitialized) {
+    try { Quagga.start(); } catch(e) {}
+    return;
+  }
+
+  const targetEl = document.querySelector('#interactive');
+  if (!targetEl) return;
+
+  Quagga.init({
+    inputStream: {
+      name: "Live",
+      type: "LiveStream",
+      target: targetEl,
+      constraints: { facingMode: "environment" }
+    },
+    decoder: { readers: ["ean_reader"] }
+  }, function(err) {
+    if (err) {
+      console.error("Quagga初期化エラー:", err);
+      return;
+    }
+    isQuaggaInitialized = true;
+    Quagga.start();
+  });
+}
 
 // 初期化 ＆ LIFFログイン
 window.addEventListener("DOMContentLoaded", function() {
@@ -21,22 +50,6 @@ window.addEventListener("DOMContentLoaded", function() {
   const type = urlParams.get('type');
   const targetId = urlParams.get('id');
 
-  // 1. 編集モード（action === 'edit'）の時だけはカメラの初期化（Quagga.init）をスキップする
-  if (action !== 'edit') {
-    Quagga.init({
-      inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: document.querySelector('#interactive'),
-        constraints: { facingMode: "environment" }
-      },
-      decoder: { readers: ["ean_reader"] }
-    }, function(err) {
-      if (!err) Quagga.start();
-    });
-  }
-
-  // 2. LIFFログイン処理（画面表示は自然な流れに任せる）
   if (typeof liff !== 'undefined') {
     liff.init({ liffId: LIFF_ID })
       .then(() => {
@@ -49,22 +62,19 @@ window.addEventListener("DOMContentLoaded", function() {
       .then(profile => {
         if (profile && profile.userId) {
           userLineId = profile.userId;
-          console.log("LINEユーザーID取得成功:", userLineId);
 
-          // URLパラメータがある場合は指定の編集画面を開く
           if (action === 'edit' && targetId) {
-            if (type === 'series') {
-              openSeriesEdit(targetId);
-            } else {
-              // LINEからの直接遷移時は戻り先を null に設定
-              openSingleEdit(targetId, null);
-            }
+            if (type === 'series') openSeriesEdit(targetId);
+            else openSingleEdit(targetId, null);
+          } else {
+            // 通常スキャン画面を表示してカメラ起動
+            switchScreen('screen-lf1');
           }
         }
       })
       .catch(err => {
         console.error("LIFF初期化エラー:", err);
-        showModal("LINEログイン情報の取得に失敗しました。\n画面を開き直してください。");
+        showModal("LINEログイン情報の取得に失敗しました。");
       });
   }
 });
@@ -306,8 +316,6 @@ function goToLf1ForMore() {
   document.getElementById("screen-lf2").style.display = "none";
   document.getElementById("screen-lf1").style.display = "block";
 }
-
-
 
 function closeLiff() {
   if (typeof liff !== 'undefined' && liff.closeWindow) {
@@ -650,11 +658,11 @@ function switchScreen(activeScreenId) {
     if (el) el.style.display = (id === activeScreenId) ? 'block' : 'none';
   });
 
-  // スキャン画面(LF1)以外へ移動した場合はカメラを一時停止し、LF1に戻ったら再開する
-  if (typeof Quagga !== 'undefined') {
-    if (activeScreenId === 'screen-lf1') {
-      try { Quagga.start(); } catch(e) {}
-    } else {
+  // LF1（スキャン画面）が表示された時だけカメラを起動・再開する
+  if (activeScreenId === 'screen-lf1') {
+    initCamera();
+  } else {
+    if (typeof Quagga !== 'undefined' && isQuaggaInitialized) {
       try { Quagga.stop(); } catch(e) {}
     }
   }
