@@ -11,6 +11,8 @@ let currentEditingSeriesId = null;
 let currentSeriesBooksData = [];
 let previousSingleScreenId = 'screen-lf2';
 
+let masterDataCache = null;
+
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
 const LIFF_ID = "2012030246-XEKrF6wY";
 
@@ -21,7 +23,7 @@ window.addEventListener("DOMContentLoaded", function() {
   const type = urlParams.get('type');
   const targetId = urlParams.get('id');
 
-  // 1. 編集モード（action === 'edit'）の時だけはカメラの初期化（Quagga.init）をスキップする
+  // 編集モード（action === 'edit'）の時だけはカメラの初期化（Quagga.init）をスキップする
   if (action !== 'edit') {
     Quagga.init({
       inputStream: {
@@ -36,7 +38,7 @@ window.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // 2. LIFFログイン処理（画面表示は自然な流れに任せる）
+  // LIFFログイン処理（画面表示は自然な流れに任せる）
   if (typeof liff !== 'undefined') {
     liff.init({ liffId: LIFF_ID })
       .then(() => {
@@ -415,30 +417,64 @@ function removeLf2ListItemLocal(userBookId) {
   }
 }
 
+// マスタデータを必要に応じて取得・キャッシュするヘルパー
+function fetchMastersIfNeeded(callback) {
+  if (masterDataCache) {
+    callback(masterDataCache);
+  } else {
+    executeApiCall('getAllMasters', {}, (data) => {
+      masterDataCache = data;
+      callback(masterDataCache);
+    });
+  }
+}
+
+// ドロップダウンにオプション群を流し込む共通ヘルパー
+function populateSelectOptions(selectEl, list, selectedId, defaultText) {
+  if (!selectEl) return;
+  selectEl.innerHTML = `<option value="">${defaultText}</option>`;
+  if (Array.isArray(list)) {
+    list.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = item.name;
+      if (selectedId && String(item.id) === String(selectedId)) {
+        opt.selected = true;
+      }
+      selectEl.appendChild(opt);
+    });
+  }
+}
+
 // 蔵書データ修正 (LF3)
 // 個別本 編集画面の読み込み
 function openSingleEdit(userBookId, fromScreenId = null) {
   currentEditingSingleId = userBookId;
   previousSingleScreenId = fromScreenId;
 
-  executeApiCall('getBookDetail', { userBookId: userBookId }, (data) => {
-    // タイトル入力欄
-    const titleEl = document.getElementById('singleEditTitleInput');
-    if (titleEl) titleEl.value = data.title || '';
+  // マスタデータの準備（キャッシュがあれば即時返却）
+  fetchMastersIfNeeded((masters) => {
+    executeApiCall('getBookDetail', { userBookId: userBookId }, (data) => {
+      // タイトル・巻数
+      const titleEl = document.getElementById('singleEditTitleInput');
+      if (titleEl) titleEl.value = data.title || '';
 
-    // 巻数入力欄（null, undefined, 0 の場合は空欄にする）
-    const volEl = document.getElementById('singleEditVolumeInput');
-    if (volEl) {
-      const hasVol = data.volumeNumber !== null && data.volumeNumber !== undefined && data.volumeNumber !== 0;
-      volEl.value = hasVol ? data.volumeNumber : '';
-    }
+      const volEl = document.getElementById('singleEditVolumeInput');
+      if (volEl) {
+        const hasVol = data.volumeNumber !== null && data.volumeNumber !== undefined && data.volumeNumber !== 0;
+        volEl.value = hasVol ? data.volumeNumber : '';
+      }
 
-    document.getElementById('singleEditAuthor').textContent = data.authorName || '未設定';
-    document.getElementById('singleEditLabel').textContent = data.publishingLabelName || '未設定';
-    document.getElementById('singleEditCategory').value = data.bookType || 'その他';
-    document.getElementById('singleEditStatus').value = data.status || '未読';
+      // ドロップダウン生成 & 現在値の自動選択
+      populateSelectOptions(document.getElementById('singleEditAuthorSelect'), masters.authors, data.authorId, '未設定');
+      populateSelectOptions(document.getElementById('singleEditLabelSelect'), masters.publishingLabels, data.publishingLabelId, '未設定');
+      populateSelectOptions(document.getElementById('singleEditSeriesSelect'), masters.series, data.seriesId, '未設定 (単行本)');
 
-    switchScreen('screen-lf3');
+      document.getElementById('singleEditCategory').value = data.bookType || 'その他';
+      document.getElementById('singleEditStatus').value = data.status || '未読';
+
+      switchScreen('screen-lf3');
+    });
   });
 }
 
@@ -551,9 +587,16 @@ function saveSingleEdit() {
 
   const titleVal = document.getElementById('singleEditTitleInput') ? document.getElementById('singleEditTitleInput').value.trim() : '';
   const volVal = document.getElementById('singleEditVolumeInput') ? document.getElementById('singleEditVolumeInput').value.trim() : '';
-  
-  // 入力があれば数値、空文字なら null
   const volumeNumber = (volVal !== "") ? parseInt(volVal, 10) : null;
+
+  // ドロップダウンで選択された各IDを取得
+  const authorSelect = document.getElementById('singleEditAuthorSelect');
+  const labelSelect = document.getElementById('singleEditLabelSelect');
+  const seriesSelect = document.getElementById('singleEditSeriesSelect');
+
+  const authorId = (authorSelect && authorSelect.value) ? parseInt(authorSelect.value, 10) : null;
+  const publishingLabelId = (labelSelect && labelSelect.value) ? parseInt(labelSelect.value, 10) : null;
+  const seriesId = (seriesSelect && seriesSelect.value) ? parseInt(seriesSelect.value, 10) : null;
 
   const category = document.getElementById('singleEditCategory').value;
   const status = document.getElementById('singleEditStatus').value;
@@ -563,6 +606,9 @@ function saveSingleEdit() {
     userBookId: currentEditingSingleId,
     title: titleVal,
     volumeNumber: volumeNumber,
+    authorId: authorId,
+    publishingLabelId: publishingLabelId,
+    seriesId: seriesId,
     bookType: category,
     status: status
   };
