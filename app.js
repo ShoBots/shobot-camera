@@ -734,3 +734,6 @@ function populateMasterSelect(selectId, items, currentId, idKey, nameKey, defaul
   }
   if (!hasSelected) noneOpt.selected = true;
 }
+window.addEventListener('error', function(e) {
+  alert("エラー発生:\n" + e.message + "\n行: " + e.lineno);
+});
