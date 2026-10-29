@@ -279,3 +279,9 @@ button {
   font-size: 0.9rem;
   text-align: center;
 }
+#lf3-card.bulk-group {
+  margin-bottom: 12px;
+}
+#lf3-card.bulk-group:last-child {
+  margin-bottom: 0;
+}
