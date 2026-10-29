@@ -422,10 +422,20 @@ function openSingleEdit(userBookId, fromScreenId = null) {
   previousSingleScreenId = fromScreenId;
 
   executeApiCall('getBookDetail', { userBookId: userBookId }, (data) => {
-    document.getElementById('singleEditTitle').textContent = data.title;
-    document.getElementById('singleEditAuthor').textContent = data.authorName || '未設定';
-    document.getElementById('singleEditLabel').textContent = data.publishingLabelName || '未設定';
-    document.getElementById('singleEditCategory').value = data.bookType || '未設定';
+    document.getElementById('singleEditTitleInput').value = data.title || '';
+    document.getElementById('singleEditVolumeInput').value = (data.volumeNumber !== null && data.volumeNumber !== undefined) ? data.volumeNumber : '';
+
+    const master = data.masterData || {};
+    populateMasterSelect('singleEditSeriesSelect', master.series, data.seriesId, 'series_id', 'series_name', 'シリーズなし');
+    populateMasterSelect('singleEditAuthorSelect', master.authors, data.authorId, 'author_id', 'author_name', '著者未設定');
+    populateMasterSelect('singleEditLabelSelect', master.publishingLabels, data.publishingLabelId, 'publishing_label_id', 'publishing_label_name', 'レーベル未設定');
+
+    ['singleEditSeriesSelect', 'singleEditAuthorSelect', 'singleEditLabelSelect'].forEach(id => {
+      document.getElementById(id.replace('Select', 'CustomContainer')).style.display = 'none';
+      document.getElementById(id.replace('Select', 'CustomInput')).value = '';
+    });
+
+    document.getElementById('singleEditCategory').value = data.bookType || 'その他';
     document.getElementById('singleEditStatus').value = data.status || '未読';
 
     switchScreen('screen-lf3');
@@ -437,7 +447,7 @@ function openSeriesEdit(seriesId) {
   currentEditingSeriesId = seriesId;
 
   executeApiCall('getSeriesDetail', { seriesId: seriesId }, (data) => {
-    document.getElementById('seriesEditTitle').textContent = data.seriesName;
+    document.getElementById('seriesEditTitleInput').value = data.seriesName || '';
     document.getElementById('seriesEditAuthor').textContent = data.authorName || '未設定';
     document.getElementById('seriesEditLabel').textContent = data.publishingLabelName || '未設定';
 
@@ -484,14 +494,16 @@ function renderSeriesAccordion() {
       itemDiv.className = 'series-book-item';
       
       itemDiv.innerHTML = `
-        <div class="series-book-title">${book.volumeNumber ? book.volumeNumber + '巻' : '単巻'} (${book.title || ''})</div>
+        <div class="series-book-row" style="margin-bottom:6px;">
+          <input type="text" class="input-text" value="${book.title || ''}" placeholder="タイトル" onchange="updateSeriesItem(${realIndex}, 'title', this.value)" />
+        </div>
         <div class="series-book-row">
           <select class="select-category" onchange="updateSeriesItem(${realIndex}, 'bookType', this.value)">
             <option value="漫画" ${book.bookType === '漫画' ? 'selected' : ''}>漫画</option>
             <option value="小説" ${book.bookType === '小説' ? 'selected' : ''}>小説</option>
             <option value="その他" ${book.bookType === 'その他' ? 'selected' : ''}>その他</option>
           </select>
-          <input type="number" class="input-vol" value="${book.volumeNumber || ''}" placeholder="巻数" onchange="updateSeriesItem(${realIndex}, 'volumeNumber', this.value)" />
+          <input type="number" class="input-vol" value="${(book.volumeNumber !== null && book.volumeNumber !== undefined) ? book.volumeNumber : ''}" placeholder="巻数" onchange="updateSeriesItem(${realIndex}, 'volumeNumber', this.value)" />
         </div>
         <div class="series-book-row">
           <select class="select-category" onchange="updateSeriesItem(${realIndex}, 'status', this.value)">
@@ -539,22 +551,37 @@ function applySeriesBulkStatus() {
 function saveSingleEdit() {
   if (!currentEditingSingleId) return;
 
+  const title = document.getElementById('singleEditTitleInput').value;
+  const volVal = document.getElementById('singleEditVolumeInput').value;
+  const volumeNumber = (volVal !== "") ? parseInt(volVal, 10) : null;
+
+  const seriesSelect = document.getElementById('singleEditSeriesSelect').value;
+  const seriesVal = (seriesSelect === 'NEW') ? document.getElementById('singleEditSeriesCustomInput').value : seriesSelect;
+
+  const authorSelect = document.getElementById('singleEditAuthorSelect').value;
+  const authorVal = (authorSelect === 'NEW') ? document.getElementById('singleEditAuthorCustomInput').value : authorSelect;
+
+  const labelSelect = document.getElementById('singleEditLabelSelect').value;
+  const labelVal = (labelSelect === 'NEW') ? document.getElementById('singleEditLabelCustomInput').value : labelSelect;
+
   const category = document.getElementById('singleEditCategory').value;
   const status = document.getElementById('singleEditStatus').value;
 
   const payload = {
     action: "updateSingleBook",
     userBookId: currentEditingSingleId,
+    title: title,
+    volumeNumber: volumeNumber,
+    seriesVal: seriesVal,
+    authorVal: authorVal,
+    labelVal: labelVal,
     bookType: category,
     status: status
   };
 
   executeApiCall('updateSingleBook', payload, () => {
     updateLf2ListCategoryLocal(currentEditingSingleId, category);
-    // モーダルの「閉じる」を押した後に closeSingleEdit() を実行
-    showModal("変更を保存しました", () => {
-      closeSingleEdit();
-    });
+    showModal("変更を保存しました", () => closeSingleEdit());
   });
 }
 
@@ -562,17 +589,17 @@ function saveSingleEdit() {
 function saveSeriesEdit() {
   if (!currentEditingSeriesId) return;
 
+  const seriesName = document.getElementById('seriesEditTitleInput').value;
+
   const payload = {
     action: "updateSeriesBooks",
     seriesId: currentEditingSeriesId,
+    seriesName: seriesName,
     books: currentSeriesBooksData
   };
 
   executeApiCall('updateSeriesBooks', payload, () => {
-    // モーダルの「閉じる」を押した後に closeLiff() を実行
-    showModal("シリーズ情報を保存しました", () => {
-      closeLiff();
-    });
+    showModal("シリーズ情報を保存しました", () => closeLiff());
   });
 }
 
@@ -658,4 +685,44 @@ function executeApiCall(actionName, payload, onSuccess) {
     if (loadingEl) loadingEl.style.display = "none";
     showModal("通信エラーが発生しました:\n" + err.message);
   });
+}
+
+// ドロップダウン制御用のヘルパー関数
+function toggleCustomInput(selectId, containerId) {
+  const selectEl = document.getElementById(selectId);
+  const containerEl = document.getElementById(containerId);
+  if (selectEl && containerEl) {
+    containerEl.style.display = (selectEl.value === 'NEW') ? 'block' : 'none';
+  }
+}
+
+function populateMasterSelect(selectId, items, currentId, idKey, nameKey, defaultText) {
+  const selectEl = document.getElementById(selectId);
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
+
+  const noneOpt = document.createElement("option");
+  noneOpt.value = "";
+  noneOpt.textContent = defaultText;
+  selectEl.appendChild(noneOpt);
+
+  const newOpt = document.createElement("option");
+  newOpt.value = "NEW";
+  newOpt.textContent = "＋ 新規入力して登録";
+  selectEl.appendChild(newOpt);
+
+  let hasSelected = false;
+  if (items && Array.isArray(items)) {
+    items.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item[idKey];
+      opt.textContent = item[nameKey];
+      if (currentId && String(item[idKey]) === String(currentId)) {
+        opt.selected = true;
+        hasSelected = true;
+      }
+      selectEl.appendChild(opt);
+    });
+  }
+  if (!hasSelected) noneOpt.selected = true;
 }
