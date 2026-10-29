@@ -422,10 +422,19 @@ function openSingleEdit(userBookId, fromScreenId = null) {
   previousSingleScreenId = fromScreenId;
 
   executeApiCall('getBookDetail', { userBookId: userBookId }, (data) => {
-    document.getElementById('singleEditTitle').textContent = data.title;
+    // タイトル入力欄
+    const titleEl = document.getElementById('singleEditTitleInput');
+    if (titleEl) titleEl.value = data.title || '';
+
+    // 巻数入力欄（NULL や undefined の場合は空文字）
+    const volEl = document.getElementById('singleEditVolumeInput');
+    if (volEl) {
+      volEl.value = (data.volumeNumber !== null && data.volumeNumber !== undefined) ? data.volumeNumber : '';
+    }
+
     document.getElementById('singleEditAuthor').textContent = data.authorName || '未設定';
     document.getElementById('singleEditLabel').textContent = data.publishingLabelName || '未設定';
-    document.getElementById('singleEditCategory').value = data.bookType || '未設定';
+    document.getElementById('singleEditCategory').value = data.bookType || 'その他';
     document.getElementById('singleEditStatus').value = data.status || '未読';
 
     switchScreen('screen-lf3');
@@ -539,19 +548,26 @@ function applySeriesBulkStatus() {
 function saveSingleEdit() {
   if (!currentEditingSingleId) return;
 
+  const titleVal = document.getElementById('singleEditTitleInput') ? document.getElementById('singleEditTitleInput').value.trim() : '';
+  const volVal = document.getElementById('singleEditVolumeInput') ? document.getElementById('singleEditVolumeInput').value.trim() : '';
+  
+  // 入力があれば数値、空文字なら null
+  const volumeNumber = (volVal !== "") ? parseInt(volVal, 10) : null;
+
   const category = document.getElementById('singleEditCategory').value;
   const status = document.getElementById('singleEditStatus').value;
 
   const payload = {
     action: "updateSingleBook",
     userBookId: currentEditingSingleId,
+    title: titleVal,
+    volumeNumber: volumeNumber,
     bookType: category,
     status: status
   };
 
   executeApiCall('updateSingleBook', payload, () => {
     updateLf2ListCategoryLocal(currentEditingSingleId, category);
-    // モーダルの「閉じる」を押した後に closeSingleEdit() を実行
     showModal("変更を保存しました", () => {
       closeSingleEdit();
     });
