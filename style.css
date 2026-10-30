@@ -17,6 +17,16 @@ h1 {
   text-align: center;
 }
 
+#screen-lf1 {
+  padding-bottom: 75px !important;
+}
+#screen-lf2 {
+  padding-bottom: 85px !important;
+}
+#screen-lf3, #screen-lf4 {
+  padding-bottom: 115px !important;
+}
+
 /* ビューポート（カメラ領域） */
 #interactive.viewport {
   position: relative;
@@ -155,6 +165,9 @@ button {
   flex-direction: column;
   gap: 8px;
   z-index: 100;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  box-sizing: border-box;
 }
 
 /* モーダルダイアログ */
@@ -279,9 +292,9 @@ button {
   font-size: 0.9rem;
   text-align: center;
 }
-#lf3-card .bulk-group {
+#lf3-card .bulk-group, #lf4-card .bulk-group {
   margin-bottom: 12px;
 }
-#lf3-card .bulk-group:last-child {
+#lf3-card .bulk-group:last-child, #lf4-card .bulk-group:last-child {
   margin-bottom: 0;
 }
