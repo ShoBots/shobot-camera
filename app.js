@@ -668,10 +668,12 @@ function saveSeriesEdit() {
     books: currentSeriesBooksData
   };
 
-  executeApiCall('updateSeriesBooks', payload, () => {
-    // モーダルの「閉じる」を押した後に closeLiff() を実行
-    showModal("シリーズ情報を保存しました", () => {
-      closeLiff();
+  const count = currentSeriesBooksData.length;
+  showConfirmModal(`シリーズ情報および全${count}冊の内容を保存しますか？\n（※除外した本は蔵書から削除されます）`, "キャンセル", "保存する", () => {
+    executeApiCall('updateSeriesBooks', payload, () => {
+      showModal("シリーズ情報を保存しました", () => {
+        closeLiff();
+      });
     });
   });
 }
