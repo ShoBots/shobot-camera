@@ -251,7 +251,8 @@ function submitScanList(forceRegister = false, customBooksData = null) {
         `以下の書籍は既に登録されています。\n重複して登録しますか？\n\n${titles}`,
         "重複を除いて登録",
         "すべて登録",
-        onConfirmDuplicate
+        onConfirmDuplicate,   // 「重複を除いて登録」を押した時の処理
+        () => submitScanList(true)
       );
     } else {
       onRegisterFailure(new Error(response.message || "登録エラー"));
@@ -362,7 +363,12 @@ function showConfirmModal(msg, cancelText, confirmText, onConfirm) {
 
   const cancelBtn = document.getElementById("btnModalCancel");
   cancelBtn.innerText = cancelText;
-  cancelBtn.onclick = closeModal;
+  cancelBtn.onclick = () => {
+    closeModal();
+    if (typeof onCancel === 'function') {
+      setTimeout(() => onCancel(), 350);
+    }
+  };
 
   const allButtons = buttonsContainer.querySelectorAll("button");
   const confirmBtn = allButtons.length > 1 ? allButtons[1] : allButtons[0];
@@ -372,15 +378,33 @@ function showConfirmModal(msg, cancelText, confirmText, onConfirm) {
     confirmBtn.innerText = confirmText;
     confirmBtn.onclick = () => {
       closeModal();
-      onConfirm();
+      if (typeof onConfirm === 'function') {
+        setTimeout(() => onConfirm(), 350);
+      }
     };
   }
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
 function onConfirmDuplicate() {
-  closeModal();
-  submitScanList(true);
+  if (!pendingBooksData || !currentDuplicates || currentDuplicates.length === 0) {
+    submitScanList(true);
+    return;
+  }
+
+  // 重複している ISBN のリストを作成
+  const duplicateIsbns = currentDuplicates.map(d => d.isbn);
+
+  // 重複していない書籍データだけを抽出
+  const filteredBooks = pendingBooksData.filter(book => !duplicateIsbns.includes(book.isbn));
+
+  if (filteredBooks.length === 0) {
+    showModal("対象の書籍はすべて登録済みだったため、登録をキャンセルしました。");
+    return;
+  }
+
+  // 重複を除いたリストでGASへ送信
+  submitScanList(true, filteredBooks);
 }
 
 function closeModal() {
