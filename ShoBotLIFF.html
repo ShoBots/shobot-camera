@@ -139,11 +139,25 @@
   <div id="screen-lf4" style="display: none;">
     <h1>蔵書データ修正</h1>
 
-    <!-- シリーズ基本情報 (表示のみ) -->
-    <div class="card">
-      <div id="seriesEditTitle" class="result-title">シリーズタイトル</div>
-      <div class="result-cat" style="margin-top: 4px;">
-        <span id="seriesEditAuthor">著者名</span> / <span id="seriesEditLabel">出版レーベル</span>
+    <!-- シリーズ基本情報 (編集フォーム) -->
+    <div class="card" id="lf4-card">
+      <div class="bulk-group">
+        <label class="label-title">シリーズタイトル</label>
+        <input type="text" id="seriesEditTitleInput" class="manual-input-field" placeholder="シリーズタイトルを入力" />
+      </div>
+
+      <div class="bulk-group">
+        <label class="label-title">著者 (一括変更)</label>
+        <select id="seriesEditAuthorSelect" class="select-category">
+          <option value="">未設定</option>
+        </select>
+      </div>
+
+      <div class="bulk-group">
+        <label class="label-title">出版レーベル (一括変更)</label>
+        <select id="seriesEditLabelSelect" class="select-category">
+          <option value="">未設定</option>
+        </select>
       </div>
     </div>
 
