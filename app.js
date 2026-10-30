@@ -348,41 +348,38 @@ function resetModalButtons() {
 }
 
 // 確認用汎用モーダル（重複確認・削除確認などで使い回し）
-function showConfirmModal(msg, cancelText, confirmText, onConfirm) {
+function showConfirmModal(msg, cancelText, confirmText, onConfirm, onCancel = null) {
   isModalOpen = true;
   document.getElementById("modalMessage").innerText = msg;
 
   const buttonsContainer = document.getElementById("modalButtons");
+  buttonsContainer.innerHTML = ""; // ボタン領域を一旦初期化
 
-  if (!document.getElementById("btnModalCancel")) {
-    const cancelBtn = document.createElement("button");
-    cancelBtn.id = "btnModalCancel";
-    cancelBtn.className = "btn-secondary";
-    buttonsContainer.insertBefore(cancelBtn, buttonsContainer.firstChild);
-  }
-
-  const cancelBtn = document.getElementById("btnModalCancel");
+  // 1. 左ボタン（重複を除いて登録）
+  const cancelBtn = document.createElement("button");
+  cancelBtn.id = "btnModalCancel";
+  cancelBtn.className = "btn-secondary";
   cancelBtn.innerText = cancelText;
   cancelBtn.onclick = () => {
+    closeModal();
+    if (typeof onConfirm === 'function') {
+      setTimeout(() => onConfirm(), 350);
+    }
+  };
+  buttonsContainer.appendChild(cancelBtn);
+
+  // 2. 右ボタン（すべて登録）
+  const confirmBtn = document.createElement("button");
+  confirmBtn.className = "btn-submit";
+  confirmBtn.innerText = confirmText;
+  confirmBtn.onclick = () => {
     closeModal();
     if (typeof onCancel === 'function') {
       setTimeout(() => onCancel(), 350);
     }
   };
+  buttonsContainer.appendChild(confirmBtn);
 
-  const allButtons = buttonsContainer.querySelectorAll("button");
-  const confirmBtn = allButtons.length > 1 ? allButtons[1] : allButtons[0];
-
-  if (confirmBtn) {
-    confirmBtn.className = "btn-submit";
-    confirmBtn.innerText = confirmText;
-    confirmBtn.onclick = () => {
-      closeModal();
-      if (typeof onConfirm === 'function') {
-        setTimeout(() => onConfirm(), 350);
-      }
-    };
-  }
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
