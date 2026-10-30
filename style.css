@@ -17,16 +17,6 @@ h1 {
   text-align: center;
 }
 
-#screen-lf1 {
-  padding-bottom: 75px !important;
-}
-#screen-lf2 {
-  padding-bottom: 85px !important;
-}
-#screen-lf3, #screen-lf4 {
-  padding-bottom: 115px !important;
-}
-
 /* ビューポート（カメラ領域） */
 #interactive.viewport {
   position: relative;
@@ -49,6 +39,10 @@ h1 {
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 14px;
+}
+.card .card{
+  padding: 0;
+  margin-bottom: 0;
 }
 #bulk-card {
   display: flex;
@@ -165,9 +159,6 @@ button {
   flex-direction: column;
   gap: 8px;
   z-index: 100;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  box-sizing: border-box;
 }
 
 /* モーダルダイアログ */
