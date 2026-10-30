@@ -506,15 +506,22 @@ function openSingleEdit(userBookId, fromScreenId = null) {
 function openSeriesEdit(seriesId) {
   currentEditingSeriesId = seriesId;
 
-  executeApiCall('getSeriesDetail', { seriesId: seriesId }, (data) => {
-    document.getElementById('seriesEditTitle').textContent = data.seriesName;
-    document.getElementById('seriesEditAuthor').textContent = data.authorName || '未設定';
-    document.getElementById('seriesEditLabel').textContent = data.publishingLabelName || '未設定';
+  // マスタデータの準備（キャッシュがあれば即時返却）
+  fetchMastersIfNeeded((masters) => {
+    executeApiCall('getSeriesDetail', { seriesId: seriesId }, (data) => {
+      // シリーズタイトル
+      const titleEl = document.getElementById('seriesEditTitleInput');
+      if (titleEl) titleEl.value = data.seriesName || '';
 
-    currentSeriesBooksData = data.books || [];
-    renderSeriesAccordion();
+      // 著者・レーベルのドロップダウン生成 & 初期選択
+      populateSelectOptions(document.getElementById('seriesEditAuthorSelect'), masters.authors, data.authorId, '未設定');
+      populateSelectOptions(document.getElementById('seriesEditLabelSelect'), masters.publishingLabels, data.publishingLabelId, '未設定');
 
-    switchScreen('screen-lf4');
+      currentSeriesBooksData = data.books || [];
+      renderSeriesAccordion();
+
+      switchScreen('screen-lf4');
+    });
   });
 }
 
@@ -649,9 +656,19 @@ function saveSingleEdit() {
 function saveSeriesEdit() {
   if (!currentEditingSeriesId) return;
 
+  const titleVal = document.getElementById('seriesEditTitleInput') ? document.getElementById('seriesEditTitleInput').value.trim() : '';
+  const authorSelect = document.getElementById('seriesEditAuthorSelect');
+  const labelSelect = document.getElementById('seriesEditLabelSelect');
+
+  const authorId = (authorSelect && authorSelect.value) ? parseInt(authorSelect.value, 10) : null;
+  const publishingLabelId = (labelSelect && labelSelect.value) ? parseInt(labelSelect.value, 10) : null;
+
   const payload = {
     action: "updateSeriesBooks",
     seriesId: currentEditingSeriesId,
+    seriesName: titleVal,
+    authorId: authorId,
+    publishingLabelId: publishingLabelId,
     books: currentSeriesBooksData
   };
 
