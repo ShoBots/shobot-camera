@@ -8,13 +8,23 @@ body {
   background-color: #fff;
   color: #333;
   padding: 16px;
-  padding-bottom: 110px;
 }
 h1 {
   font-size: 1.1rem;
   color: #000;
   margin-bottom: 12px;
   text-align: center;
+}
+
+/* 画面ごとのフッター高さ＋余白（回り込み・重なり防止） */
+#screen-lf1 {
+  padding-bottom: 80px;
+}
+#screen-lf2 {
+  padding-bottom: 125px;
+}
+#screen-lf3, #screen-lf4 {
+  padding-bottom: 170px;
 }
 
 /* ビューポート（カメラ領域） */
