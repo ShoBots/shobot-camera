@@ -18,13 +18,13 @@ h1 {
 
 /* 画面ごとのフッター高さ＋余白（回り込み・重なり防止） */
 #screen-lf1 {
-  padding-bottom: 90px;
+  padding-bottom: 80px;
 }
 #screen-lf2 {
-  padding-bottom: 135px;
+  padding-bottom: 125px;
 }
 #screen-lf3, #screen-lf4 {
-  padding-bottom: 185px;
+  padding-bottom: 180px;
 }
 
 /* ビューポート（カメラ領域） */
