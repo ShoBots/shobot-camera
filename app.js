@@ -137,7 +137,6 @@ function applyBulkSettings() {
       scannedIsbns.set(isbn, selectedCat);
     }
   }
-  
   renderLf1List();
 }
 
@@ -186,7 +185,7 @@ function renderLf1List() {
     `;
     listEl.appendChild(li);
   });
-
+  
   if (submitBtn) {
     submitBtn.disabled = scannedIsbns.size === 0;
   }
@@ -310,8 +309,6 @@ function goToLf1ForMore() {
   document.getElementById("screen-lf1").style.display = "block";
 }
 
-
-
 function closeLiff() {
   if (typeof liff !== 'undefined' && liff.closeWindow) {
     liff.closeWindow();
@@ -421,22 +418,21 @@ function closeModal() {
   }, 300);
 }
 
-function updateLf2ListCategoryLocal(userBookId, newCategory) {
-  const editBtn = document.querySelector(`button[onclick*="openLf3Edit(${userBookId}"]`);
-  if (editBtn) {
-    const resultItem = editBtn.closest('.result-item');
-    if (resultItem) {
-      const catSpan = resultItem.querySelector('.result-cat');
-      if (catSpan) catSpan.textContent = `区分: ${newCategory}`;
-    }
-  }
-}
+// LF2リストのローカル表示更新・削除を行う統合ヘルパー
+function updateLf2ListLocal(userBookId, title, vol, cat, isDelete = false) {
+  const editBtn = document.querySelector(`button[onclick*="openSingleEdit(${userBookId}"]`);
+  if (!editBtn) return; // 検索画面などLF2以外の画面から開いた場合はスキップ
+  const item = editBtn.closest('.result-item');
+  if (!item) return;
 
-function removeLf2ListItemLocal(userBookId) {
-  const editBtn = document.querySelector(`button[onclick*="openLf3Edit(${userBookId}"]`);
-  if (editBtn) {
-    const resultItem = editBtn.closest('.result-item');
-    if (resultItem) resultItem.remove();
+  if (isDelete) {
+    item.remove(); // 削除の場合
+  } else {
+    // 更新の場合（入力値を反映）
+    const titleSpan = item.querySelector('.result-title');
+    const catSpan = item.querySelector('.result-cat');
+    if (titleSpan && title) titleSpan.textContent = title + (vol ? ` ${vol}` : '');
+    if (catSpan && cat) catSpan.textContent = `区分: ${cat}`;
   }
 }
 
@@ -645,7 +641,7 @@ function saveSingleEdit() {
   };
 
   executeApiCall('updateSingleBook', payload, () => {
-    updateLf2ListCategoryLocal(currentEditingSingleId, category);
+    updateLf2ListLocal(currentEditingSingleId, titleVal, volVal, category);
     showModal("変更を保存しました", () => {
       closeSingleEdit();
     });
@@ -686,7 +682,7 @@ function deleteSingleBook() {
 
   showConfirmModal("この本を蔵書から削除してもよろしいですか？", "キャンセル", "削除する", () => {
     executeApiCall('deleteSingleBook', { userBookId: currentEditingSingleId }, () => {
-      removeLf2ListItemLocal(currentEditingSingleId);
+      updateLf2ListLocal(currentEditingSingleId, null, null, null, true);
       showModal("削除しました", () => closeSingleEdit());
     });
   });
