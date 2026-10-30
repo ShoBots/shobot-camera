@@ -445,7 +445,8 @@ function fetchMastersIfNeeded(callback) {
   if (masterDataCache) {
     callback(masterDataCache);
   } else {
-    executeApiCall('getAllMasters', {}, (data) => {
+    // lineUserId を一緒に送る
+    executeApiCall('getAllMasters', { lineUserId: userLineId }, (data) => {
       masterDataCache = data;
       callback(masterDataCache);
     });
