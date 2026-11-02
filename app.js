@@ -250,8 +250,8 @@ function submitScanList(forceRegister = false, customBooksData = null) {
         `以下の書籍は既に登録されています。\n重複して登録しますか？\n\n${titles}`,
         "重複を除いて登録",
         "すべて登録",
-        onConfirmDuplicate,   // 「重複を除いて登録」を押した時の処理
-        () => submitScanList(true)
+        () => submitScanList(true), // 右ボタン（すべて登録）
+        onConfirmDuplicate           // 左ボタン（重複を除いて登録）
       );
     } else {
       onRegisterFailure(new Error(response.message || "登録エラー"));
@@ -362,8 +362,6 @@ function showConfirmModal(msg, cancelText, confirmText, onConfirm, onCancel = nu
     setTimeout(() => {
       if (typeof onCancel === 'function') {
         onCancel();
-      } else {
-        onConfirmDuplicate();
       }
     }, 350);
   };
@@ -377,8 +375,6 @@ function showConfirmModal(msg, cancelText, confirmText, onConfirm, onCancel = nu
     setTimeout(() => {
       if (typeof onConfirm === 'function') {
         onConfirm();
-      } else {
-        submitScanList(true);
       }
     }, 350);
   };
