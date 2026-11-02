@@ -251,7 +251,7 @@ function submitScanList(forceRegister = false, customBooksData = null) {
         "重複を除いて登録",
         "すべて登録",
         () => submitScanList(true), // 右ボタン（すべて登録）
-        onConfirmDuplicate           // 左ボタン（重複を除いて登録）
+        () => onConfirmDuplicate()  // 左ボタン（重複を除いて登録）
       );
     } else {
       onRegisterFailure(new Error(response.message || "登録エラー"));
