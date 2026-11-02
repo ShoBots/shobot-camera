@@ -352,18 +352,42 @@ function showConfirmModal(msg, cancelText, confirmText, onConfirm, onCancel = nu
   const buttonsContainer = document.getElementById("modalButtons");
   buttonsContainer.innerHTML = ""; // ボタン領域を初期化
 
-  // 左ボタン (「重複を除いて登録」ボタン)
+  // 左ボタン (「キャンセル」または「重複を除いて登録」ボタン)
   const cancelBtn = document.createElement("button");
   cancelBtn.id = "btnModalCancel";
   cancelBtn.className = "btn-secondary";
-  cancelBtn.innerText = cancelText; // "重複を除いて登録"
+  cancelBtn.innerText = cancelText;
   cancelBtn.onclick = () => {
     closeModal();
-    // 350ms待ってモーダルが完全に閉じてから重複除外登録を実行
     setTimeout(() => {
-      onConfirmDuplicate();
+      if (typeof onCancel === 'function') {
+        onCancel();
+      } else {
+        onConfirmDuplicate();
+      }
     }, 350);
   };
+
+  // 右ボタン (「削除する」「保存する」または「すべて登録」ボタン)
+  const confirmBtn = document.createElement("button");
+  confirmBtn.className = "btn-submit";
+  confirmBtn.innerText = confirmText;
+  confirmBtn.onclick = () => {
+    closeModal();
+    setTimeout(() => {
+      if (typeof onConfirm === 'function') {
+        onConfirm();
+      } else {
+        submitScanList(true);
+      }
+    }, 350);
+  };
+
+  buttonsContainer.appendChild(cancelBtn);
+  buttonsContainer.appendChild(confirmBtn);
+
+  document.getElementById("modalOverlay").style.display = "flex";
+}
 
   // 右ボタン (「すべて登録」ボタン)
   const confirmBtn = document.createElement("button");
