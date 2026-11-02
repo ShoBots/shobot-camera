@@ -389,22 +389,6 @@ function showConfirmModal(msg, cancelText, confirmText, onConfirm, onCancel = nu
   document.getElementById("modalOverlay").style.display = "flex";
 }
 
-  // 右ボタン (「すべて登録」ボタン)
-  const confirmBtn = document.createElement("button");
-  confirmBtn.className = "btn-submit";
-  confirmBtn.innerText = confirmText; // "すべて登録"
-  confirmBtn.onclick = () => {
-    closeModal();
-    setTimeout(() => {
-      submitScanList(true);
-    }, 350);
-  };
-
-  buttonsContainer.appendChild(cancelBtn);
-  buttonsContainer.appendChild(confirmBtn);
-
-  document.getElementById("modalOverlay").style.display = "flex";
-}
 
 function onConfirmDuplicate() {
   if (!pendingBooksData || !currentDuplicates || currentDuplicates.length === 0) {
