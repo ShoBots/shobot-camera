@@ -16,26 +16,31 @@ let masterDataCache = null;
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfZ1-RHQ9FbqnhylY9WyZ7f2tFpFUzvWLxtFwsqStD1_QnL2Ftl0C7LeBjlfIvgU7k/exec"; 
 const LIFF_ID = "2012030246-XEKrF6wY";
 
+let replaceUbId = null;
+
 // 初期化 ＆ LIFFログイン
 window.addEventListener("DOMContentLoaded", function() {
   const urlParams = new URLSearchParams(window.location.search);
   const action = urlParams.get('action');
   const type = urlParams.get('type');
   const targetId = urlParams.get('id');
+  replaceUbId = urlParams.get('replace_ub_id');
 
   // 編集モード（action === 'edit'）の時だけはカメラの初期化（Quagga.init）をスキップする
   if (action !== 'edit') {
-    Quagga.init({
-      inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: document.querySelector('#interactive'),
-        constraints: { facingMode: "environment" }
-      },
-      decoder: { readers: ["ean_reader"] }
-    }, function(err) {
-      if (!err) Quagga.start();
-    });
+    setTimeout(function() { //DOM生成完了を確実に待ってカメラ初期化
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#interactive'),
+          constraints: { facingMode: "environment" }
+        },
+        decoder: { readers: ["ean_reader"] }
+      }, function(err) {
+        if (!err) Quagga.start();
+      });
+    }, 300);
   }
 
   // LIFFログイン処理（画面表示は自然な流れに任せる）
@@ -227,7 +232,8 @@ function submitScanList(forceRegister = false, customBooksData = null) {
       action: "registerBooks",
       books: booksData,
       lineUserId: userLineId,
-      forceRegister: forceRegister
+      forceRegister: forceRegister,
+      replaceUbId: replaceUbId
     })
   })
   .then(res => res.json())
