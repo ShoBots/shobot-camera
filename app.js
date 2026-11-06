@@ -205,16 +205,6 @@ function submitScanList(forceRegister = false, customBooksData = null) {
     return;
   }
 
-  const loadingEl = document.getElementById("loadingOverlay");
-  if (loadingEl) loadingEl.style.display = "block";
-
-  const submitBtn = document.getElementById("btnSubmitLf1");
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.textContent = "登録中...";
-  }
-
-  // 画面のドロップダウンから選択中のステータスを取得して一括指定
   const currentBulkStatus = document.getElementById("bulkStatus").value;
 
   const booksData = customBooksData || Array.from(scannedIsbns.entries()).map(([isbn, category]) => {
@@ -225,30 +215,20 @@ function submitScanList(forceRegister = false, customBooksData = null) {
     };
   });
 
-  fetch(GAS_WEB_APP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({
-      action: "registerBooks",
-      books: booksData,
-      lineUserId: userLineId,
-      forceRegister: forceRegister,
-      replaceUbId: replaceUbId
-    })
-  })
-  .then(res => res.json())
-  .then(response => {
-    if (response.status === "success") {
-      pendingBooksData = null;
-      onRegisterSuccess(response);
-    } else if (response.status === "duplicate_warning") {
-      if (loadingEl) loadingEl.style.display = "none";
-      
+  const payload = {
+    action: "registerBooks",
+    books: booksData,
+    lineUserId: userLineId,
+    forceRegister: forceRegister,
+    replaceUbId: replaceUbId
+  };
+
+  executeApiCall('registerBooks', payload, (response) => {
+    if (response.status === "duplicate_warning") {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = "登録";
       }
-
       pendingBooksData = booksData;
       currentDuplicates = response.duplicates || [];
       const titles = response.duplicates.map(d => `・${d.title}`).join("\n");
@@ -256,14 +236,14 @@ function submitScanList(forceRegister = false, customBooksData = null) {
         `以下の書籍は既に登録されています。\n重複して登録しますか？\n\n${titles}`,
         "重複を除いて登録",
         "すべて登録",
-        () => submitScanList(true), // 右ボタン（すべて登録）
-        () => onConfirmDuplicate()  // 左ボタン（重複を除いて登録）
+        () => submitScanList(true),
+        () => onConfirmDuplicate()
       );
     } else {
-      onRegisterFailure(new Error(response.message || "登録エラー"));
+      pendingBooksData = null;
+      onRegisterSuccess(response);
     }
-  })
-  .catch(err => onRegisterFailure(err));
+  });
 }
 
 function onRegisterSuccess(response) {
@@ -758,9 +738,9 @@ function executeApiCall(actionName, payload, onSuccess) {
     body: JSON.stringify(payload)
   })
   .then(res => res.json())
-  .then(response => {
+.then(response => {
     if (loadingEl) loadingEl.style.display = "none";
-    if (response.status === "success") {
+    if (response.status === "success" || response.status === "duplicate_warning") {
       onSuccess(response.data || response);
     } else {
       showModal("処理に失敗しました:\n" + (response.message || "エラー"));
